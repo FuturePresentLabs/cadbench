@@ -172,6 +172,37 @@ criterion:
   settled, can it actually be machined/printed/molded well. Also out of
   scope here.
 
+## Alternatives
+
+Other benchmarks in this space, for context and future comparison — not
+wired up here, listed so we don't reinvent a comparison that already
+exists:
+
+- **[Hephaestus-CCX](https://arxiv.org/abs/2605.17448)** — the closest real
+  analog: 50 single/multi-part engineering briefs, each judged by typed
+  pass/fail requirement checkers against real CalculiX FEA output (stress,
+  displacement, buckling, modal), in an iterative
+  brief→CadQuery→STEP→FEA-feedback loop. Best reported result: 60.5% mean
+  requirement satisfaction, 9/50 strict passes, after ~70 min/item of
+  iteration. The paper states the benchmark is released, but no clean
+  harness URL was confirmed as of 2026-09-22 — a large (89GB) logged-runs
+  dataset exists on HuggingFace under a matching namespace, but that reads
+  as experiment output, not the raw brief/checker bundle. Planned: measure
+  `transmog` against these briefs once the harness is actually reachable —
+  the nearest thing to an apples-to-apples comparison cadbench has.
+- **[MUSE](https://arxiv.org/pdf/2605.28579)** — multi-part B-Rep assemblies
+  scored on functionality, manufacturability, and assemblability by a
+  rubric-based VLM judge rather than geometric similarity alone. Public
+  leaderboard, dataset, and code.
+- **[Text2CAD-Bench](https://arxiv.org/pdf/2605.18430)** — 600
+  human-curated examples across 4 difficulty levels.
+- **[CADTests](https://arxiv.org/pdf/2605.07807)** — executable tests
+  verifying a generated model's geometric/topological requirements are
+  actually satisfied, not just visually plausible.
+- **BenchCAD** — 17,900 CadQuery programs, 106 part families; pure
+  code-generation, not a full brief→artifact→verdict pipeline like this
+  one.
+
 ## License
 
 AGPL-3.0-or-later, matching `pcbbench` and `legion-of-bom`.
