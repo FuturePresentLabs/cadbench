@@ -1,0 +1,33 @@
+id = "mounting-plate-tight-tolerance-v1"
+family = "mounting-plate"
+brief = """
+A rectangular mounting plate, roughly 100x60x20mm, 6061-T6 aluminum. One \
+central boss on the top face for a precision bearing, about 20mm diameter \
+and 8-10mm tall. Three through-bores: the locating bore must hold a \
+precision dowel to within 0.02mm position, true to the plate's datum \
+scheme; the other two are general mounting clearance holes. This plate is \
+the alignment reference for a stack of three others above it, so whatever \
+the locating bore's positional tolerance ends up being has to survive that \
+stack-up without the brief saying what the stack's own tolerance budget is.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage that ran exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every typed decision cleared a reasonable confidence bar"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the built geometry satisfies the design's own datums and tolerances"
+kind = "conforms"
+
+[[rubric]]
+id = "vibe"
+description = "reads as a designed precision mounting plate, not a pile of features"
+kind = "subjective"

@@ -104,43 +104,86 @@ mod tests {
         assert!(matches!(back.rubric[3].check, Check::Subjective));
     }
 
-    /// The shipped task file is part of the harness's contract, not sample
-    /// data: if it stops parsing, or quietly loses a criterion, every score
-    /// it ever produces is wrong. Parse the real file, not a copy.
+    /// Every shipped task file is part of the harness's contract, not sample
+    /// data: if one stops parsing, or quietly loses a criterion, every score
+    /// it ever produces is wrong. Parses every real file under `tasks/`
+    /// rather than naming one, so a new task file is covered the moment it's
+    /// added -- no test to remember to write alongside it.
     #[test]
-    fn the_shipped_mounting_plate_task_parses() {
+    fn every_shipped_task_parses_and_has_a_sound_rubric() {
+        let tasks_dir = concat!(env!("CARGO_MANIFEST_DIR"), "/tasks");
+        let mut checked = 0;
+        for entry in std::fs::read_dir(tasks_dir).expect("tasks/ is readable") {
+            let path = entry.expect("dir entry readable").path();
+            if path.extension().and_then(|e| e.to_str()) != Some("toml") {
+                continue;
+            }
+            let text = std::fs::read_to_string(&path)
+                .unwrap_or_else(|e| panic!("{} is readable: {e}", path.display()));
+            let task: Task = toml::from_str(&text)
+                .unwrap_or_else(|e| panic!("{} parses: {e}", path.display()));
+
+            assert!(!task.id.trim().is_empty(), "{}: empty id", path.display());
+            assert!(
+                !task.family.trim().is_empty(),
+                "{}: empty family",
+                path.display()
+            );
+            assert!(
+                !task.brief.trim().is_empty(),
+                "{}: empty brief",
+                path.display()
+            );
+
+            // Every task must exercise every objective check kind this
+            // harness knows how to score -- a task missing one is a task
+            // that isn't actually testing the whole rubric.
+            assert!(
+                task.rubric.iter().any(|c| matches!(c.check, Check::StagesPass)),
+                "{}: missing a stages_pass criterion",
+                path.display()
+            );
+            assert!(
+                task.rubric.iter().any(|c| matches!(c.check, Check::Conforms)),
+                "{}: missing a conforms criterion",
+                path.display()
+            );
+            assert!(
+                task.rubric
+                    .iter()
+                    .any(|c| matches!(c.check, Check::MinDecisionConfidence { .. })),
+                "{}: missing a min_decision_confidence criterion",
+                path.display()
+            );
+
+            // Rubric ids are how results are keyed; duplicates would silently
+            // overwrite each other in any downstream report.
+            let mut ids: Vec<&str> = task.rubric.iter().map(|c| c.id.as_str()).collect();
+            ids.sort_unstable();
+            let before = ids.len();
+            ids.dedup();
+            assert_eq!(ids.len(), before, "{}: duplicate rubric ids", path.display());
+
+            checked += 1;
+        }
+        assert!(checked > 0, "tasks/ has no .toml files to check");
+    }
+
+    /// The original task's specific numbers stay pinned on their own: the
+    /// 0.7 confidence bar is a value pcbbench and cadbench independently
+    /// converged on, worth catching a silent drift on specifically.
+    #[test]
+    fn the_shipped_mounting_plate_task_uses_the_shared_confidence_bar() {
         let text = std::fs::read_to_string(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/tasks/mounting-plate-v1.toml"
         ))
         .expect("tasks/mounting-plate-v1.toml is readable");
         let task: Task = toml::from_str(&text).expect("it parses");
-
         assert_eq!(task.id, "mounting-plate-v1");
-        assert_eq!(task.family, "mounting-plate");
-        assert!(!task.brief.trim().is_empty());
-
-        // The rubric must actually contain the three objective checks the
-        // task is supposed to exercise, and the confidence bar must be the
-        // 0.7 that pcbbench and cadbench independently converged on.
-        assert!(task
-            .rubric
-            .iter()
-            .any(|c| matches!(c.check, Check::StagesPass)));
-        assert!(task
-            .rubric
-            .iter()
-            .any(|c| matches!(c.check, Check::Conforms)));
         assert!(task.rubric.iter().any(
             |c| matches!(c.check, Check::MinDecisionConfidence { threshold } if threshold == 0.7)
         ));
-        // Rubric ids are how results are keyed; duplicates would silently
-        // overwrite each other in any downstream report.
-        let mut ids: Vec<&str> = task.rubric.iter().map(|c| c.id.as_str()).collect();
-        ids.sort_unstable();
-        let before = ids.len();
-        ids.dedup();
-        assert_eq!(ids.len(), before, "rubric ids must be unique");
     }
 
     /// An unrecognised `kind` is a typo or a task written against a newer
