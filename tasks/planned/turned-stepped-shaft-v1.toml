@@ -1,0 +1,45 @@
+# PLANNED -- not runnable yet. See bracket-l-motor-mount-v1.toml's header
+# comment and tasks/planned/README.md for why this lives here instead of
+# in tasks/.
+#
+# Turned parts are flagged separately from brackets: rotationally
+# symmetric generation is a different shape grammar (lathe-paradigm --
+# diameter steps along one axis) than mounting-plate's or bracket-l's
+# feature-based/milling approach (pockets, bosses, bores on a box or
+# angle of stock). Likely needs its own generation strategy on the
+# backend, not just a new curated family in the same generator.
+
+id = "turned-stepped-shaft-v1"
+family = "turned-stepped-shaft"
+brief = """
+A stepped shaft, 303 stainless steel, 85mm overall length. One end: \
+8mm diameter x 20mm long, for a ball bearing's inner race (light press \
+fit, ISO 286 n6 on the shaft against the bearing's rated bore). Then a \
+12mm diameter x 15mm shoulder the bearing seats against. Then a 6mm \
+diameter x 50mm long section ending in an M6x1.0 thread, 12mm of thread \
+length, for a coupling nut. All diameter transitions need a small \
+relief groove, not a sharp shoulder, so the bearing seats fully home. \
+Both ends chamfered 0.5x45 to ease assembly. Concentricity between the \
+bearing seat and the threaded end matters -- this shaft spins.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage that ran exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every typed decision cleared a reasonable confidence bar -- concentricity/runout between the bearing seat and the threaded end is the one real ambiguity here (no numeric callout given), similar in spirit to mounting-plate-v1's locating-bore tolerance"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the built geometry satisfies the design's own datums and tolerances"
+kind = "conforms"
+
+[[rubric]]
+id = "vibe"
+description = "reads as a designed shaft, not a pile of cylinders -- relief grooves, chamfers, and thread runout all need to be present and sensibly proportioned"
+kind = "subjective"

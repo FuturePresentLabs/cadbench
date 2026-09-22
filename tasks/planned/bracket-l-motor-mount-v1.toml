@@ -1,0 +1,43 @@
+# PLANNED -- not runnable yet. Lives in tasks/planned/, not tasks/, so
+# it's excluded from both the real eval count (scripts/update-badges.sh)
+# and every_shipped_task_parses_and_has_a_sound_rubric (which only reads
+# tasks/*.toml, one directory deep). It documents a target family
+# (`bracket-l`) for whenever transmog grows a curated family past
+# mounting-plate -- a concrete spec to build toward, not a claim that
+# this runs today. See tasks/planned/README.md.
+
+id = "bracket-l-motor-mount-v1"
+family = "bracket-l"
+brief = """
+An L-shaped structural bracket to mount a NEMA 23 stepper motor to the \
+inside face of an equipment enclosure wall, motor axis horizontal. \
+6061-T6 aluminum, roughly 150x100x120mm overall (motor-face leg x \
+wall-face leg x height), motor bolt circle per NEMA 23's standard \
+pattern (4x M5 through-holes on a 47.14mm bolt circle, central pilot \
+bore for the motor's spigot). Wall-face leg needs 4 mounting slots (not \
+holes) so the bracket can be shimmed for alignment after the enclosure \
+is welded. Ribbed along the inside corner for stiffness -- this bracket \
+carries real cantilevered load from the motor and any belt tension on \
+its shaft, not just its own weight.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage that ran exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every typed decision cleared a reasonable confidence bar"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the built geometry satisfies the design's own datums and tolerances"
+kind = "conforms"
+
+[[rubric]]
+id = "vibe"
+description = "reads as a designed structural bracket, not a pile of features -- ribbing placement and proportion matter here in a way they don't for a flat mounting plate"
+kind = "subjective"
