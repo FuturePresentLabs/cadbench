@@ -1,0 +1,22 @@
+[package]
+name = "cadbench"
+version = "0.1.0"
+edition = "2021"
+description = "Eval harness for typed-decision-driven CAD design agents. CAD-kernel-agnostic: drives a backend (transmog's `transmog` CLI today) as a subprocess and scores its artifacts against a task's rubric."
+license = "AGPL-3.0-or-later"
+
+[lib]
+name = "cadbench"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cadbench"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+thiserror = "2"
