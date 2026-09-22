@@ -13,33 +13,19 @@
 //! Nothing in this module understands CAD. It understands processes and file
 //! paths. The reading of artifacts into rubric answers is [`crate::scorer`]'s
 //! job.
+//!
+//! The seam itself ([`Backend`]) is [`eval::Backend`] — shared with pcbbench
+//! and any future sibling harness. `Outcome`/`Error` are this crate's own
+//! associated types; nothing about them is generic.
+
+pub use eval::Backend;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use serde::{Deserialize, Serialize};
 
-use crate::task::Task;
-
-/// A backend that can attempt a task and leave artifacts behind.
-///
-/// One method, because a backend has exactly one job. Everything that varies
-/// between backends — how it is invoked, how many stages it runs, what it
-/// writes — is behind [`Backend::run`], and everything the scorer needs is in
-/// the [`RunOutcome`] that comes back. A second implementation should not need
-/// this trait to change.
-pub trait Backend {
-    /// Short identifier recorded in results (`transmog`, `zoo`, ...).
-    fn name(&self) -> &str;
-
-    /// Attempts `task`, writing all artifacts under `workdir`.
-    ///
-    /// # Errors
-    /// The backend could not be invoked at all, or a capability the task needs
-    /// is missing. A backend that ran and did badly is *not* an error — that
-    /// is a [`RunOutcome`] with failing stages, which is a score, not a crash.
-    fn run(&self, task: &Task, workdir: &Path) -> Result<RunOutcome, RunError>;
-}
+use crate::task::{Check, Task};
 
 /// Failures that stop a run before it can be scored.
 #[derive(Debug, thiserror::Error)]
@@ -308,7 +294,10 @@ pub const BUILD_STATUS_SCHEMA: &str = "transmog.build.stream.v1";
 /// Decision trace filename the harness looks for in the work directory.
 pub const DECISION_TRACE_FILE: &str = "decisions.json";
 
-impl Backend for TransmogBackend {
+impl Backend<Check> for TransmogBackend {
+    type Outcome = RunOutcome;
+    type Error = RunError;
+
     fn name(&self) -> &str {
         "transmog"
     }

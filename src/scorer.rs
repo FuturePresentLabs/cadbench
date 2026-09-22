@@ -6,60 +6,10 @@
 //! it is surfaced as unresolved rather than silently passed, exactly as
 //! pcbbench's "vibe" criterion is human-graded for now.
 
-use serde::{Deserialize, Serialize};
+pub use eval::{CriterionResult, ScoreReport, Verdict};
 
 use crate::runner::RunOutcome;
 use crate::task::{Check, Task};
-
-/// One criterion's outcome.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Verdict {
-    Pass,
-    Fail,
-    /// [`Check::Subjective`]: not automated, needs a human to fill in.
-    NeedsHuman,
-}
-
-/// One rubric line item, scored.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CriterionResult {
-    pub id: String,
-    pub description: String,
-    pub verdict: Verdict,
-    /// Why, in the scorer's own words — never blank on a `Fail`, so a
-    /// failing run is diagnosable from the result file alone.
-    pub detail: String,
-}
-
-/// A full scored run.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ScoreReport {
-    pub task_id: String,
-    pub backend: String,
-    pub results: Vec<CriterionResult>,
-}
-
-impl ScoreReport {
-    /// Every automated criterion passed. [`Verdict::NeedsHuman`] does not
-    /// count against this — an unresolved subjective check is not a failure,
-    /// it is exactly what it says: unresolved.
-    #[must_use]
-    pub fn all_automated_pass(&self) -> bool {
-        self.results
-            .iter()
-            .all(|r| !matches!(r.verdict, Verdict::Fail))
-    }
-
-    /// Criteria still needing a human, by id.
-    #[must_use]
-    pub fn needs_human(&self) -> Vec<&str> {
-        self.results
-            .iter()
-            .filter(|r| matches!(r.verdict, Verdict::NeedsHuman))
-            .map(|r| r.id.as_str())
-            .collect()
-    }
-}
 
 /// Scores `outcome` against `task`'s rubric.
 #[must_use]
