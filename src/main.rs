@@ -27,11 +27,19 @@ struct Args {
     binary: Option<PathBuf>,
 
     /// Score an existing DesignDocument RON instead of asking the backend to
-    /// design from the task's brief. The only mode that runs end to end
-    /// today — transmog has no brief-to-DesignDocument entry point yet (see
-    /// runner::DesignSource docs). Omit once that exists.
+    /// design from the task's brief. Skips the design stage entirely, which
+    /// makes it a build-and-conformance regression test with no agent in the
+    /// loop. Omit it for the real eval.
     #[arg(long)]
     fixture: Option<PathBuf>,
+
+    /// Let the design stage call the real decision gateway instead of
+    /// replaying recorded responses. The backend needs BIFROST_API_KEY.
+    ///
+    /// Off by default: a benchmark that reaches the network unasked produces
+    /// numbers nobody else can reproduce.
+    #[arg(long)]
+    live: bool,
 
     /// Directory to write run artifacts into.
     #[arg(long, default_value = "cadbench-run")]
@@ -60,7 +68,7 @@ fn main() -> ExitCode {
         Some(path) => DesignSource::Fixture(path),
         None => DesignSource::Brief,
     };
-    let mut backend = TransmogBackend::new(args.repo, design);
+    let mut backend = TransmogBackend::new(args.repo, design).live(args.live);
     if let Some(binary) = args.binary {
         backend = backend.with_binary(binary);
     }

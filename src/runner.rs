@@ -171,12 +171,13 @@ impl RunOutcome {
 
 /// Where the `DesignDocument` under test comes from.
 ///
-/// Today transmog has no "brief in, design out" entry point: its CLI operates
-/// on designs that already exist, and `transmog-editor-agent` is a demo binary
-/// with its fixtures compiled in rather than a command that takes a brief. So
-/// the only mode that runs end to end right now is [`DesignSource::Fixture`],
-/// and asking for [`DesignSource::Brief`] says exactly what is missing instead
-/// of quietly scoring something else.
+/// [`DesignSource::Brief`] is the real eval and now runs end to end: transmog
+/// grew the entry point it needs, `transmog spec <family> --brief ... --out ...
+/// --trace ...`, which writes both artifacts this harness goes looking for.
+/// [`DesignSource::Fixture`] stays because it is useful on its own — it
+/// exercises the build and conformance half of the rubric with no design agent
+/// in the loop at all, which is what you want when the question is "did the
+/// kernel regress" rather than "did the agent design well".
 #[derive(Debug, Clone)]
 pub enum DesignSource {
     /// Score an existing `DesignDocument` RON.
@@ -199,6 +200,15 @@ pub struct TransmogBackend {
     /// captures, so a stage's stderr stops being only the backend's.
     pub binary: Option<PathBuf>,
     pub design: DesignSource,
+    /// Pass `--live` to `transmog spec`, so the design stage calls the real
+    /// decision gateway instead of replaying recorded responses.
+    ///
+    /// Off by default because a benchmark that silently reaches the network is
+    /// a benchmark whose numbers nobody can reproduce. With it on, the backend
+    /// needs `BIFROST_API_KEY` in its environment and `transmog spec` fails
+    /// loudly without one — which surfaces here as a failed stage, not as a
+    /// quiet fallback to the recording.
+    pub live: bool,
 }
 
 impl TransmogBackend {
@@ -209,6 +219,7 @@ impl TransmogBackend {
             repo: repo.into(),
             binary: None,
             design,
+            live: false,
         }
     }
 
@@ -216,6 +227,13 @@ impl TransmogBackend {
     #[must_use]
     pub fn with_binary(mut self, binary: impl Into<PathBuf>) -> Self {
         self.binary = Some(binary.into());
+        self
+    }
+
+    /// Runs the design stage against the real decision gateway.
+    #[must_use]
+    pub fn live(mut self, live: bool) -> Self {
+        self.live = live;
         self
     }
 
@@ -279,8 +297,12 @@ impl TransmogBackend {
     }
 }
 
+/// Name of the design stage, which turns the task's brief into a document.
+pub const STAGE_SPEC: &str = "spec";
 /// Name of the build stage, shared with the scorer's reporting.
 pub const STAGE_BUILD: &str = "build-stream";
+/// Filename the design stage writes its `DesignDocument` RON to.
+pub const DESIGN_FILE: &str = "design.ron";
 /// Schema tag `transmog build-stream` writes into `status.json`.
 pub const BUILD_STATUS_SCHEMA: &str = "transmog.build.stream.v1";
 /// Decision trace filename the harness looks for in the work directory.
@@ -297,21 +319,32 @@ impl Backend for TransmogBackend {
             source,
         })?;
 
+        let mut stages = Vec::new();
+
+        // `transmog spec <family> --brief <brief> --out <design> --trace
+        // <decisions>` designs the part. The task's `family` goes through
+        // untouched: which families exist is the backend's business, and a
+        // family it does not know is a failed stage with the backend's own
+        // error in it rather than something this harness has an opinion about.
         let design_path = match &self.design {
             DesignSource::Fixture(path) => path.clone(),
             DesignSource::Brief => {
-                return Err(RunError::CapabilityMissing {
-                    backend: self.name().to_owned(),
-                    capability: "design a part from a brief".to_owned(),
-                    detail: format!(
-                        "task {:?} needs a brief-to-DesignDocument entry point. The transmog CLI \
-                         has none today: its subcommands all take geometry or a design that \
-                         already exists, and transmog-editor-agent is a demo binary with its \
-                         fixtures compiled in. Re-run with a fixture design to score the build \
-                         and conformance criteria, or add the entry point to the backend.",
-                        task.id
-                    ),
-                })
+                let design = workdir.join(DESIGN_FILE);
+                let mut args = vec![
+                    "spec".to_owned(),
+                    task.family.clone(),
+                    "--brief".to_owned(),
+                    task.brief.clone(),
+                    "--out".to_owned(),
+                    design.display().to_string(),
+                    "--trace".to_owned(),
+                    workdir.join(DECISION_TRACE_FILE).display().to_string(),
+                ];
+                if self.live {
+                    args.push("--live".to_owned());
+                }
+                stages.push(self.stage(STAGE_SPEC, &args)?);
+                design
             }
         };
 
@@ -319,8 +352,14 @@ impl Backend for TransmogBackend {
         // one real entry point that takes a DesignDocument RON and produces
         // scoreable artifacts: it replays the design feature by feature and
         // rewrites `status.json` as it goes.
+        //
+        // It runs even when the design stage failed, and that is deliberate: a
+        // build that cannot find the document records a second failed stage
+        // with the reason in it, which is more use to whoever reads the result
+        // than an early return that says nothing about what the build would
+        // have done. Both are already failures the rubric counts.
         let build_dir = workdir.join("build");
-        let stages = vec![self.stage(
+        stages.push(self.stage(
             STAGE_BUILD,
             &[
                 "build-stream".to_owned(),
@@ -328,7 +367,7 @@ impl Backend for TransmogBackend {
                 "--out".to_owned(),
                 build_dir.display().to_string(),
             ],
-        )?];
+        )?);
 
         Ok(RunOutcome {
             task_id: task.id.clone(),
@@ -410,19 +449,104 @@ mod tests {
         assert!(args.is_empty(), "{args:?}");
     }
 
-    #[test]
-    fn designing_from_a_brief_fails_loud_rather_than_scoring_something_else() {
-        let task = Task {
+    fn brief_task() -> Task {
+        Task {
             id: "t".to_owned(),
-            family: "machined-plate".to_owned(),
-            brief: "A plate.".to_owned(),
+            family: "mounting-plate".to_owned(),
+            brief: "A plate with a boss.".to_owned(),
             rubric: Vec::new(),
-        };
-        let backend = TransmogBackend::new("/repo", DesignSource::Brief);
-        let dir = std::env::temp_dir().join("cadbench-brief-test");
-        let err = backend.run(&task, &dir).expect_err("no such capability");
-        assert!(matches!(err, RunError::CapabilityMissing { .. }), "{err:?}");
-        assert!(err.to_string().contains("design a part from a brief"));
+        }
+    }
+
+    /// The design stage must invoke the backend's real entry point, with the
+    /// task's own family and brief and with both output paths inside the work
+    /// directory the harness then reads.
+    ///
+    /// Driven through a `true`-shaped stand-in binary so the assertion is about
+    /// the command line this harness builds, not about transmog being present.
+    #[test]
+    fn designing_from_a_brief_invokes_transmog_spec_with_both_artifacts() {
+        let dir = std::env::temp_dir().join("cadbench-brief-invocation");
+        let _ = std::fs::remove_dir_all(&dir);
+        let backend =
+            TransmogBackend::new("/repo", DesignSource::Brief).with_binary("/usr/bin/true");
+
+        let outcome = backend.run(&brief_task(), &dir).expect("stages run");
+        let spec = outcome
+            .stages
+            .iter()
+            .find(|s| s.name == STAGE_SPEC)
+            .expect("a design stage ran");
+
+        assert!(spec.command.contains(" spec "), "{}", spec.command);
+        assert!(spec.command.contains("mounting-plate"), "{}", spec.command);
+        assert!(
+            spec.command.contains("--brief A plate with a boss."),
+            "{}",
+            spec.command
+        );
+        assert!(
+            spec.command.contains(&dir.join(DESIGN_FILE).display().to_string()),
+            "the design must land in the work directory: {}",
+            spec.command
+        );
+        assert!(
+            spec.command
+                .contains(&dir.join(DECISION_TRACE_FILE).display().to_string()),
+            "the trace must land where read_decision_trace looks: {}",
+            spec.command
+        );
+        // Recorded by default: a benchmark must not reach the network unasked.
+        assert!(!spec.command.contains("--live"), "{}", spec.command);
+
+        // The design stage comes first; the build cannot precede the document.
+        assert_eq!(outcome.stages[0].name, STAGE_SPEC);
+        assert_eq!(outcome.stages[1].name, STAGE_BUILD);
+        assert_eq!(
+            outcome.design_path.as_deref(),
+            Some(dir.join(DESIGN_FILE).as_path())
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn live_is_opt_in_and_reaches_the_design_stage() {
+        let dir = std::env::temp_dir().join("cadbench-brief-live");
+        let _ = std::fs::remove_dir_all(&dir);
+        let backend = TransmogBackend::new("/repo", DesignSource::Brief)
+            .with_binary("/usr/bin/true")
+            .live(true);
+
+        let outcome = backend.run(&brief_task(), &dir).expect("stages run");
+        let spec = outcome
+            .stages
+            .iter()
+            .find(|s| s.name == STAGE_SPEC)
+            .expect("a design stage ran");
+        assert!(spec.command.ends_with("--live"), "{}", spec.command);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A fixture run must not invoke the design stage at all — there is nothing
+    /// to design, and a spurious stage would drag `stages_pass` down with it.
+    #[test]
+    fn a_fixture_run_does_not_run_the_design_stage() {
+        let dir = std::env::temp_dir().join("cadbench-fixture-no-spec");
+        let _ = std::fs::remove_dir_all(&dir);
+        let backend = TransmogBackend::new("/repo", DesignSource::Fixture("/given.ron".into()))
+            .with_binary("/usr/bin/true");
+
+        let outcome = backend.run(&brief_task(), &dir).expect("stages run");
+        assert_eq!(outcome.stages.len(), 1);
+        assert_eq!(outcome.stages[0].name, STAGE_BUILD);
+        assert_eq!(
+            outcome.design_path.as_deref(),
+            Some(Path::new("/given.ron"))
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
