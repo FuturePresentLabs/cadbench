@@ -2,8 +2,10 @@
 
 [![license](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](#license)
 [![tests](https://img.shields.io/badge/tests-20%20passing-brightgreen.svg)](#status)
-[![evals](https://img.shields.io/badge/evals-20-orange.svg)](#tasks)
+[![evals](https://img.shields.io/badge/evals-22-orange.svg)](#tasks)
 [![status](https://img.shields.io/badge/status-runs%20end%20to%20end-success.svg)](#status)
+
+*(Badge numbers are generated — run `scripts/update-badges.sh` after a test or task count changes; don't hand-edit them.)*
 
 Eval harness for typed-decision-driven CAD design agents. Sibling to
 [`pcbbench`](../pcbbench) — same shape, different domain. A task names a
@@ -17,7 +19,7 @@ is a new [`runner::Backend`] impl, not a rewrite.
 ## Status
 
 **Runs end to end**, one known shortcut called out below — the same
-honesty pcbbench and legion-of-bom hold themselves to. 20 unit tests, 20
+honesty pcbbench and legion-of-bom hold themselves to. 20 unit tests, 22
 tasks. `transmog` (today's only backend) grew the brief-to-`DesignDocument`
 entry point this harness was built to drive, so the default mode — no
 `--fixture` — is the real eval, not a fixture-only regression.
@@ -80,9 +82,10 @@ mixes its own progress into the stderr this harness captures.
 
 ## Tasks
 
-Twenty, all under `tasks/`, one part family (`mounting-plate` — Transmog's
-only curated family today; the geometric template is fixed, so every task
-varies the *brief*, not the shape). Grouped by what each one stresses:
+Twenty-two, all under `tasks/`, one part family (`mounting-plate` —
+Transmog's only curated family today; the geometric template is fixed, so
+every task varies the *brief*, not the shape). Grouped by what each one
+stresses:
 
 **Baseline & positive controls** — golden-path briefs that should always
 pass `confidence`. If one of these ever fails, the harness or the backend
@@ -129,6 +132,19 @@ reason (corrosion, weight, damping, cost), not a find-replace.
   is one. Expected to surface as a failed or capability-missing stage, not
   a silently substituted one-boss part. The rubric says so honestly rather
   than assuming a `conforms` pass.
+
+**Grounded in a real standard** — tolerance language pulled from
+[ISO 286](https://en.wikipedia.org/wiki/ISO_286)/ANSI B4.1's limits-and-fits
+system rather than invented numbers, so "ambiguous" and "unambiguous" are
+judged against how a real GD&T-literate engineer would actually write a
+fit callout, not against a made-up bar.
+- `mounting-plate-iso-h7g6-clearance-v1` — positive control: the locating
+  dowel's fit is fully specified (`H7/g6`, hand-assembled, removable).
+- `mounting-plate-iso-fit-unspecified-v1` — ambiguity stress case: brief
+  wants "removable but won't walk under vibration," which sits between a
+  clearance fit (`H7/g6`) and a light interference fit (`H7/n6`) with no
+  stated preference — a real, common engineering ambiguity, not a
+  contrived one.
 
 ## Task format
 

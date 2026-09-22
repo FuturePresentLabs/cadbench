@@ -1,0 +1,32 @@
+id = "mounting-plate-iso-h7g6-clearance-v1"
+family = "mounting-plate"
+brief = """
+A rectangular mounting plate, roughly 100x60x20mm, 6061-T6 aluminum. One \
+central boss on the top face for a bushing, about 20mm diameter and \
+8-10mm tall. Three through-bores: the locating bore takes a standard \
+dowel pin on an ISO 286 H7/g6 clearance fit (hole H7, pin g6) so it can \
+be hand-assembled and later removed for service without binding or \
+requiring a press; the other two are general mounting clearance holes. \
+Datums come from the plate's own stock faces and the boss.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage that ran exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every typed decision cleared a reasonable confidence bar -- a positive control grounded in a real, named standard (ISO 286 H7/g6): the fit class is fully specified, not left for the model to infer"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the built geometry satisfies the design's own datums and tolerances"
+kind = "conforms"
+
+[[rubric]]
+id = "vibe"
+description = "reads as a designed mounting plate, not a pile of features"
+kind = "subjective"
