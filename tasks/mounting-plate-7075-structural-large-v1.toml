@@ -1,0 +1,32 @@
+id = "mounting-plate-7075-structural-large-v1"
+family = "mounting-plate"
+brief = """
+A rectangular mounting plate, 150x100x25mm, 7075-T6 aluminum, general \
+structural bracket use with no precision-stack requirement. One central \
+boss on the top face, 25mm diameter, 12mm tall, for a bushing with \
+generous clearance. Three through-bores, all general mounting clearance \
+holes on a standard +/-0.25mm positional tolerance from the plate's own \
+stock edges — none of them locates anything else. Every dimension, \
+tolerance, and datum choice here should have one obvious answer.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage that ran exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every typed decision cleared a reasonable confidence bar -- a positive control at a larger, structural scale than the other unambiguous tasks"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the built geometry satisfies the design's own datums and tolerances"
+kind = "conforms"
+
+[[rubric]]
+id = "vibe"
+description = "reads as a designed structural mounting plate, not a pile of features"
+kind = "subjective"

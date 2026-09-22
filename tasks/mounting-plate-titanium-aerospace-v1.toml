@@ -1,0 +1,34 @@
+id = "mounting-plate-titanium-aerospace-v1"
+family = "mounting-plate"
+brief = """
+A rectangular mounting plate, roughly 80x50x10mm, Ti-6Al-4V titanium — \
+weight-critical avionics bracket, titanium chosen over aluminum for its \
+strength-to-weight ratio at this thickness. One central boss on the top \
+face for a connector housing, about 14mm diameter and 6mm tall. Three \
+through-bores: the locating bore must hold position to within 0.03mm, \
+which is the connector housing manufacturer's stated mating tolerance \
+(datasheet spec, not derived here); the other two are general mounting \
+clearance holes on a standard +/-0.1mm positional tolerance. Datums come \
+from the plate's own stock faces and the boss.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage that ran exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every typed decision cleared a reasonable confidence bar -- a hard tolerance with its source stated plainly; should still score confidently"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the built geometry satisfies the design's own datums and tolerances"
+kind = "conforms"
+
+[[rubric]]
+id = "vibe"
+description = "reads as a designed avionics bracket, not a pile of features"
+kind = "subjective"

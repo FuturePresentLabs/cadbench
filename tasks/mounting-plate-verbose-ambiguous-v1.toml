@@ -1,0 +1,40 @@
+id = "mounting-plate-verbose-ambiguous-v1"
+family = "mounting-plate"
+brief = """
+This mounting plate is part of a larger assembly that has been through \
+several design reviews; earlier revisions used a different enclosure \
+entirely, so please disregard any legacy references you might encounter \
+elsewhere to a "rev B" bracket -- this is a clean-sheet part. The general \
+shape is a rectangular plate, roughly 100x60x20mm, material to be a \
+standard aluminum alloy suitable for light structural use (6061 is fine \
+unless there's a reason to deviate). One central boss on the top face for \
+a bushing, about 20mm diameter and 8-10mm tall. Three through-bores: one \
+of them is the locating feature for the assembly and needs to hold \
+position tightly because the assembly it locates has essentially no \
+tolerance margin of its own left to give -- the exact number was going to \
+come from the mechanical lead but that thread never got closed out. The \
+other two bores are general mounting clearance holes. Datums should come \
+from the plate's own stock faces and the boss, consistent with how the \
+rest of this product family has been dimensioned.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage that ran exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every typed decision cleared a reasonable confidence bar -- compound stress case: verbose brief that still never states the one tolerance number that matters"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the built geometry satisfies the design's own datums and tolerances"
+kind = "conforms"
+
+[[rubric]]
+id = "vibe"
+description = "reads as a designed mounting plate, not a pile of features"
+kind = "subjective"

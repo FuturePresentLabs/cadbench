@@ -1,0 +1,32 @@
+id = "mounting-plate-prototype-loose-v1"
+family = "mounting-plate"
+brief = """
+A rectangular mounting plate, roughly 100x60x20mm, 6061-T6 aluminum -- this \
+is a rapid-prototype build for bench testing only, not a production part. \
+It doesn't need to look pretty, just needs to work: one central boss on \
+the top face for a bushing, about 20mm diameter and 8-10mm tall, and three \
+through-bores for general mounting on a generous +/-0.4mm positional \
+tolerance from the plate's own stock edges. Nothing here locates anything \
+precision-critical.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage that ran exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every typed decision cleared a reasonable confidence bar -- another positive control, framed as an explicitly non-critical prototype rather than a finished-product bracket"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the built geometry satisfies the design's own datums and tolerances"
+kind = "conforms"
+
+[[rubric]]
+id = "vibe"
+description = "reads as a designed prototype mounting plate, not a pile of features"
+kind = "subjective"

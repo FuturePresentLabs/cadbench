@@ -1,0 +1,33 @@
+id = "mounting-plate-instrument-panel-small-v1"
+family = "mounting-plate"
+brief = """
+A rectangular mounting plate, 50x40x8mm, 6061-T6 aluminum, a small \
+instrument-panel bracket with no precision-stack requirement. One central \
+boss on the top face, 10mm diameter, 5mm tall, for a small gauge bushing \
+with generous clearance. Three through-bores, all general mounting \
+clearance holes on a standard +/-0.2mm positional tolerance from the \
+plate's own stock edges — none of them locates anything else. Every \
+dimension, tolerance, and datum choice here should have one obvious \
+answer.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage that ran exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every typed decision cleared a reasonable confidence bar -- a positive control at a much smaller scale than the other unambiguous tasks"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the built geometry satisfies the design's own datums and tolerances"
+kind = "conforms"
+
+[[rubric]]
+id = "vibe"
+description = "reads as a designed instrument bracket, not a pile of features"
+kind = "subjective"

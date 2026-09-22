@@ -1,0 +1,32 @@
+id = "mounting-plate-delrin-lightweight-v1"
+family = "mounting-plate"
+brief = """
+A rectangular mounting plate, roughly 90x50x15mm, Delrin (acetal) — chosen \
+for weight and low friction, this plate carries no significant structural \
+load, just positions a small sensor housing on a lightweight robotics arm. \
+One central boss on the top face for a plastic bushing, about 15mm \
+diameter and 6mm tall. Three through-bores, all general mounting clearance \
+holes on a generous +/-0.3mm positional tolerance — nothing here locates \
+anything else, so there is no tighter reference to hold.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage that ran exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every typed decision cleared a reasonable confidence bar -- generous tolerances and a clear rationale, so this should score high"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the built geometry satisfies the design's own datums and tolerances"
+kind = "conforms"
+
+[[rubric]]
+id = "vibe"
+description = "reads as a designed lightweight bracket, not a pile of features"
+kind = "subjective"

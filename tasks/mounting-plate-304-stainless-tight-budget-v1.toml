@@ -1,0 +1,34 @@
+id = "mounting-plate-304-stainless-tight-budget-v1"
+family = "mounting-plate"
+brief = """
+A rectangular mounting plate, roughly 100x60x20mm, 304 stainless steel, \
+food-processing equipment context (corrosion and washdown resistance are \
+why stainless was chosen). One central boss on the top face for a \
+bushing, about 20mm diameter and 8-10mm tall. Three through-bores: the \
+locating bore must hold position to within 0.04mm, per the equipment \
+manufacturer's published mounting-interface spec (that number is given, \
+not derived); the other two are general mounting clearance holes on a \
+standard +/-0.15mm positional tolerance. Datums come from the plate's own \
+stock faces and the boss.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage that ran exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every typed decision cleared a reasonable confidence bar -- tight tolerance, but sourced from a stated external spec, not invented; should still score confidently"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the built geometry satisfies the design's own datums and tolerances"
+kind = "conforms"
+
+[[rubric]]
+id = "vibe"
+description = "reads as a designed food-equipment mounting plate, not a pile of features"
+kind = "subjective"

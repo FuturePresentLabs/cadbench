@@ -1,0 +1,34 @@
+id = "mounting-plate-304-stainless-marine-v1"
+family = "mounting-plate"
+brief = """
+A rectangular mounting plate, roughly 100x60x20mm, 304 stainless steel — \
+this part lives on a dock fixture exposed to salt spray, so corrosion \
+resistance is the reason for the material choice, not just durability. One \
+central boss on the top face for a bronze bushing, about 20mm diameter and \
+8-10mm tall. Three through-bores: one locates the part (position \
+toleranced to the plate's datum scheme) and should hold a dowel or \
+locating pin; the other two are general mounting clearance holes on a \
+standard +/-0.15mm positional tolerance. Datums should come from the \
+plate's own stock faces and the boss.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage that ran exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every typed decision cleared a reasonable confidence bar"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the built geometry satisfies the design's own datums and tolerances"
+kind = "conforms"
+
+[[rubric]]
+id = "vibe"
+description = "reads as a designed marine mounting plate, not a pile of features"
+kind = "subjective"

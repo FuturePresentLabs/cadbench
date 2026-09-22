@@ -1,0 +1,24 @@
+id = "mounting-plate-terse-minimal-v1"
+family = "mounting-plate"
+brief = "Aluminum mounting plate, three holes, one boss."
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage that ran exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every typed decision cleared a reasonable confidence bar -- stress test: near-minimum viable brief, no dimensions, no tolerances, no context for any decision"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the built geometry satisfies the design's own datums and tolerances"
+kind = "conforms"
+
+[[rubric]]
+id = "vibe"
+description = "reads as a designed mounting plate, not a pile of features"
+kind = "subjective"

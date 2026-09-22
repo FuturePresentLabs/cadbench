@@ -1,0 +1,34 @@
+id = "mounting-plate-customer-mating-part-v1"
+family = "mounting-plate"
+brief = """
+A rectangular mounting plate, roughly 100x60x20mm, 6061-T6 aluminum. One \
+central boss on the top face for a bushing, about 20mm diameter and 8-10mm \
+tall. Three through-bores: the locating bore must mate to a \
+customer-supplied part whose drawing hasn't been shared yet -- the \
+customer has said they'll confirm the exact positional tolerance once \
+their own drawing is released, but the design needs to proceed now. The \
+other two are general mounting clearance holes on a standard +/-0.2mm \
+positional tolerance. Datums come from the plate's own stock faces and the \
+boss.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage that ran exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every typed decision cleared a reasonable confidence bar -- ambiguity stress case: the missing tolerance is explicitly pending an external party, not just an omission"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the built geometry satisfies the design's own datums and tolerances"
+kind = "conforms"
+
+[[rubric]]
+id = "vibe"
+description = "reads as a designed mounting plate, not a pile of features"
+kind = "subjective"

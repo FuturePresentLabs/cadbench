@@ -2,6 +2,7 @@
 
 [![license](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](#license)
 [![tests](https://img.shields.io/badge/tests-20%20passing-brightgreen.svg)](#status)
+[![evals](https://img.shields.io/badge/evals-20-orange.svg)](#tasks)
 [![status](https://img.shields.io/badge/status-runs%20end%20to%20end-success.svg)](#status)
 
 Eval harness for typed-decision-driven CAD design agents. Sibling to
@@ -16,7 +17,7 @@ is a new [`runner::Backend`] impl, not a rewrite.
 ## Status
 
 **Runs end to end**, one known shortcut called out below — the same
-honesty pcbbench and legion-of-bom hold themselves to. 20 unit tests, three
+honesty pcbbench and legion-of-bom hold themselves to. 20 unit tests, 20
 tasks. `transmog` (today's only backend) grew the brief-to-`DesignDocument`
 entry point this harness was built to drive, so the default mode — no
 `--fixture` — is the real eval, not a fixture-only regression.
@@ -79,17 +80,55 @@ mixes its own progress into the stderr this harness captures.
 
 ## Tasks
 
-Three, all under `tasks/`, one part family (`mounting-plate`) with
-different briefs stressing different parts of the rubric:
+Twenty, all under `tasks/`, one part family (`mounting-plate` — Transmog's
+only curated family today; the geometric template is fixed, so every task
+varies the *brief*, not the shape). Grouped by what each one stresses:
 
-- **`mounting-plate-v1`** — the baseline: enough detail to build, one
-  underspecified tolerance to make the confidence criterion mean something.
-- **`mounting-plate-tight-tolerance-v1`** — a precision stack-up with no
-  stated tolerance budget. A deliberately hard case; expected to fail
-  `confidence` until the brief (or the model) resolves the ambiguity.
-- **`mounting-plate-unambiguous-v1`** — a golden-path positive control.
-  Every dimension and tolerance has one obvious answer. If this one ever
-  fails, the harness or the backend regressed — not the brief.
+**Baseline & positive controls** — golden-path briefs that should always
+pass `confidence`. If one of these ever fails, the harness or the backend
+regressed, not the brief.
+- `mounting-plate-v1` — the original baseline (one underspecified tolerance
+  on purpose, see below).
+- `mounting-plate-unambiguous-v1`, `mounting-plate-7075-structural-large-v1`,
+  `mounting-plate-instrument-panel-small-v1`, `mounting-plate-prototype-loose-v1`,
+  `mounting-plate-galvanized-outdoor-v1`, `mounting-plate-delrin-lightweight-v1`
+  — loose tolerances, clear intent, different scales and materials each
+  time so "positive control" doesn't collapse into one shape being tested
+  five times.
+
+**Tight tolerance, source stated** — hard numbers, but the *why* is given.
+Should still clear `confidence`.
+- `mounting-plate-cast-iron-machine-base-v1` (mating housing's own spec),
+  `mounting-plate-titanium-aerospace-v1` (connector datasheet spec),
+  `mounting-plate-304-stainless-tight-budget-v1` (equipment manufacturer's
+  spec), `mounting-plate-7075-robotics-arm-v1` (joint repeatability spec).
+
+**Ambiguity stress cases** — a real reason for a tight tolerance, with the
+one number that matters never given. Expected to fail `confidence`, each
+for a different underlying reason.
+- `mounting-plate-tight-tolerance-v1` (stack-up budget never stated),
+  `mounting-plate-thermal-mismatch-tight-v1` (thermal expansion mismatch,
+  no temperature range or CTE given), `mounting-plate-customer-mating-part-v1`
+  (tolerance pending an external party's drawing).
+
+**Brief-length stress cases** — does the agent have enough signal, in
+either direction.
+- `mounting-plate-terse-minimal-v1`, `mounting-plate-c360-brass-terse-v1` —
+  one sentence, almost nothing to go on.
+- `mounting-plate-verbose-overspec-v1` — heavy logistics/paperwork noise
+  around otherwise-unambiguous technical content.
+- `mounting-plate-verbose-ambiguous-v1` — verbose *and* still never states
+  the one tolerance that matters; the compound case.
+
+**Material variety** — chosen where the material itself carries a design
+reason (corrosion, weight, damping, cost), not a find-replace.
+- `mounting-plate-304-stainless-marine-v1` (salt-spray corrosion resistance).
+
+**Capability edge** — past what the curated template can express.
+- `mounting-plate-dual-boss-request-v1` — asks for two bosses; the template
+  is one. Expected to surface as a failed or capability-missing stage, not
+  a silently substituted one-boss part. The rubric says so honestly rather
+  than assuming a `conforms` pass.
 
 ## Task format
 

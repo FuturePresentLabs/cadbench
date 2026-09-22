@@ -1,0 +1,40 @@
+id = "mounting-plate-verbose-overspec-v1"
+family = "mounting-plate"
+brief = """
+This request is for customer account #48213, PO number 90142-B, requested \
+delivery in 6-8 weeks via standard freight, quoted separately. The part is \
+a mounting plate for the customer's internal project codenamed "Falcon" — \
+please do not reference that codename on any drawing title block, use the \
+generic part description instead. The customer has asked that all mounting \
+hardware be sourced as stainless fasteners, though the plate material \
+itself does not need to be stainless. Packaging should be in individual \
+poly bags, not bulk. As for the actual part: a rectangular mounting plate, \
+100x60x20mm, 6061-T6 aluminum, one central boss on the top face for a \
+bearing, 20mm diameter and 10mm tall, three through-bores on a standard \
++/-0.2mm positional tolerance from the plate's own stock edges, none of \
+which locate anything else. The customer's invoicing contact is in a \
+different department than the engineering contact; direct technical \
+questions to engineering only. Surface finish should be standard mill \
+finish, no anodizing requested for this batch.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage that ran exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every typed decision cleared a reasonable confidence bar -- the real technical content (material, dimensions, tolerance) is unambiguous once the logistics/paperwork noise is filtered out"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the built geometry satisfies the design's own datums and tolerances"
+kind = "conforms"
+
+[[rubric]]
+id = "vibe"
+description = "reads as a designed mounting plate, not a pile of features -- and not a transcript of the purchase order"
+kind = "subjective"

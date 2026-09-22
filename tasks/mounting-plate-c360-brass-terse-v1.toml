@@ -1,0 +1,24 @@
+id = "mounting-plate-c360-brass-terse-v1"
+family = "mounting-plate"
+brief = "Brass mounting plate, grounding bus for an electrical enclosure, roughly 100x60x20mm, three bores, one boss."
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage that ran exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every typed decision cleared a reasonable confidence bar -- stress test: an intentionally terse brief with almost no tolerance or datum context"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the built geometry satisfies the design's own datums and tolerances"
+kind = "conforms"
+
+[[rubric]]
+id = "vibe"
+description = "reads as a designed grounding plate, not a pile of features"
+kind = "subjective"

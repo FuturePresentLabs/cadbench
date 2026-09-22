@@ -1,0 +1,33 @@
+id = "mounting-plate-7075-robotics-arm-v1"
+family = "mounting-plate"
+brief = """
+A rectangular mounting plate, roughly 90x55x15mm, 7075-T6 aluminum -- \
+chosen for strength-to-weight on a small robotics arm segment where every \
+gram at this joint adds motor load further up the chain. One central boss \
+on the top face for a bearing, about 18mm diameter and 8mm tall. Three \
+through-bores: the locating bore holds position to within 0.06mm against \
+the joint's stated repeatability requirement; the other two are general \
+mounting clearance holes on a standard +/-0.15mm positional tolerance. \
+Datums come from the plate's own stock faces and the boss.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage that ran exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every typed decision cleared a reasonable confidence bar -- tight-ish tolerance with a stated source (the joint's own repeatability spec)"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the built geometry satisfies the design's own datums and tolerances"
+kind = "conforms"
+
+[[rubric]]
+id = "vibe"
+description = "reads as a designed robotics mounting plate, not a pile of features"
+kind = "subjective"
