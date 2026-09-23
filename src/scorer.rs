@@ -185,11 +185,16 @@ fn conforms_verdict(outcome: &RunOutcome) -> Verdict {
 fn detail_for(check: &Check, outcome: &RunOutcome) -> String {
     match check {
         Check::StagesPass => {
-            let failed: Vec<&str> = outcome
+            // The stage and the last thing it said: a failure that does not
+            // say why sends whoever reads the report back to rerun it.
+            let failed: Vec<String> = outcome
                 .stages
                 .iter()
                 .filter(|s| !s.ok())
-                .map(|s| s.name.as_str())
+                .map(|s| {
+                    let last = s.stderr.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("");
+                    format!("{} ({})", s.name, last.trim())
+                })
                 .collect();
             if outcome.stages.is_empty() {
                 "no stages ran".to_owned()

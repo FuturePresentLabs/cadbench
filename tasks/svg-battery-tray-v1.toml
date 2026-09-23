@@ -28,10 +28,17 @@ kind = "conforms"
 
 [[rubric]]
 id = "hollow"
-description = "a tray that holds something is hollow; any offered wall is acceptable"
+description = "a tray that holds something is hollow"
 kind = "decision"
 key = "body"
-one_of = ["hollow_1p5mm", "hollow_2p0mm", "hollow_3p0mm"]
+one_of = ["hollow"]
+
+[[rubric]]
+id = "wall"
+description = "a wall was chosen; the brief does not settle which, so any offered wall is accepted"
+kind = "decision"
+key = "body_wall"
+one_of = ["wall_1p5mm", "wall_2p0mm", "wall_3p0mm"]
 
 [[rubric]]
 id = "bounds"
