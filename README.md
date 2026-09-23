@@ -55,6 +55,15 @@ actually satisfies its own declared tolerances. The real check
 tested, but is reachable from no CLI yet. See `scorer::conforms_verdict`'s
 doc comment for the exact fix once that wrapper lands.
 
+## Writing tasks
+
+[GUIDELINES.md](GUIDELINES.md) sets the authoring rules. G1–G6 are enforced
+by a test: each task's expected numbers show their hand derivation, briefs
+never give away an answer's key, and every family has a task it must refuse.
+Shape-driven tasks (`family = "svg-part"`) take an `[input]` table (an SVG,
+a height and a material) and are scored on volume, bounds, true-surface
+STEP, cut plan and the decisions the brief settles.
+
 ## Usage
 
 ```bash

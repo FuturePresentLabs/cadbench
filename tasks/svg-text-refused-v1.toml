@@ -1,0 +1,17 @@
+id = "svg-text-refused-v1"
+family = "svg-part"
+brief = """
+A 60 x 30 mm name plate, 3 mm thick, with FPL engraved on it.
+"""
+
+[input]
+svg = "../fixtures/shapes/label-plate.svg"
+height_mm = 3.0
+material = "6061-T6"
+
+[[rubric]]
+id = "refuses-text"
+description = "text is not a shape; the backend asks for it outlined rather than guessing glyphs or dropping them"
+kind = "refuses"
+stage = "design"
+contains = "text"

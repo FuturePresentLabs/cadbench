@@ -1,0 +1,32 @@
+id = "svg-narrow-slot-refused-v1"
+family = "svg-part"
+brief = """
+A 40 x 30 mm plate waterjet cut from 3 mm aluminium, with a thin slot cut \
+right through it for a spring clip.
+"""
+
+[input]
+svg = "../fixtures/shapes/narrow-slot-plate.svg"
+height_mm = 3.0
+material = "6061-T6"
+
+[[rubric]]
+id = "designs"
+description = "the design itself is fine: a slot is a slot"
+kind = "decision"
+key = "cutout_0"
+one_of = ["through"]
+
+[[rubric]]
+id = "bounds"
+description = "40 x 30 x 3"
+kind = "bounds_mm"
+expected = [40.0, 30.0, 3.0]
+tolerance = 0.01
+
+[[rubric]]
+id = "refuses-cut"
+description = "a 0.6 mm slot cannot be entered by a 0.8 mm jet; the cut is refused with the reason, not cut as something else"
+kind = "cut_refused"
+kerf_mm = 0.8
+contains = "narrower than the jet"

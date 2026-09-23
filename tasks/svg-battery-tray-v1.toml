@@ -1,0 +1,41 @@
+id = "svg-battery-tray-v1"
+family = "svg-part"
+brief = """
+An open-topped tray, 3D printed, that a battery pack drops into. It only has \
+to hold the pack in place, so keep it light rather than printing a solid block.
+"""
+
+[input]
+svg = "../fixtures/shapes/battery-tray.svg"
+height_mm = 25.0
+material = "PETG"
+
+[[rubric]]
+id = "stages"
+description = "every stage exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every decision the model made cleared the shared 0.7 bar"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the build completed"
+kind = "conforms"
+
+[[rubric]]
+id = "hollow"
+description = "a tray that holds something is hollow; any offered wall is acceptable"
+kind = "decision"
+key = "body"
+one_of = ["hollow_1p5mm", "hollow_2p0mm", "hollow_3p0mm"]
+
+[[rubric]]
+id = "bounds"
+description = "hollowing never changes the envelope: 100 x 60 x 25"
+kind = "bounds_mm"
+expected = [100.0, 60.0, 25.0]
+tolerance = 0.01

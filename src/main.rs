@@ -9,7 +9,6 @@ use std::process::ExitCode;
 
 use cadbench::runner::{Backend, DesignSource, RunError, TransmogBackend};
 use cadbench::scorer::score;
-use cadbench::task::Task;
 use clap::Parser;
 
 #[derive(Parser)]
@@ -49,17 +48,15 @@ struct Args {
 fn main() -> ExitCode {
     let args = Args::parse();
 
-    let text = match std::fs::read_to_string(&args.task) {
-        Ok(text) => text,
-        Err(error) => {
-            eprintln!("error: reading {}: {error}", args.task.display());
-            return ExitCode::FAILURE;
-        }
-    };
-    let task: Task = match toml::from_str(&text) {
+    let task = match cadbench::task::load(&args.task) {
         Ok(task) => task,
         Err(error) => {
-            eprintln!("error: parsing {}: {error}", args.task.display());
+            eprintln!("error: {error}");
+            let mut source = std::error::Error::source(&error);
+            while let Some(cause) = source {
+                eprintln!("  caused by: {cause}");
+                source = cause.source();
+            }
             return ExitCode::FAILURE;
         }
     };

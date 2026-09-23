@@ -1,0 +1,77 @@
+id = "svg-sensor-bezel-v1"
+family = "svg-part"
+brief = """
+A bezel machined from 12 mm aluminium plate that sits over a sensor board. \
+The four corner screws are M3 socket-head cap screws, and their heads must end \
+up below the top face. The large rectangular opening is a recess the sensor's \
+glass sits down into -- it must not go right through the bezel. The small \
+rounded slot passes a ribbon cable all the way through.
+"""
+
+[input]
+svg = "../fixtures/shapes/sensor-plate.svg"
+height_mm = 12.0
+material = "6061-T6"
+
+[[rubric]]
+id = "stages"
+description = "every stage exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every decision the model made cleared the shared 0.7 bar"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the build completed"
+kind = "conforms"
+
+[[rubric]]
+id = "solid-body"
+description = "a bezel with seats cut into it is a solid body"
+kind = "decision"
+key = "body"
+one_of = ["solid"]
+
+[[rubric]]
+id = "screw-heads-sunk"
+description = "heads below the top face means a counterbore for the M3 holes"
+kind = "decision"
+key = "holes_0"
+one_of = ["counterbore_m3"]
+
+[[rubric]]
+id = "window-is-a-recess"
+description = "the large opening (cutout 0, first in the drawing) must not go through"
+kind = "decision"
+key = "cutout_0"
+one_of = ["pocket"]
+
+[[rubric]]
+id = "slot-through"
+description = "the cable slot (cutout 1) goes through"
+kind = "decision"
+key = "cutout_1"
+one_of = ["through"]
+
+[[rubric]]
+id = "bounds"
+description = "80 x 50 x 12: sinking features never changes the envelope"
+kind = "bounds_mm"
+expected = [80.0, 50.0, 12.0]
+tolerance = 0.01
+
+[[rubric]]
+id = "true-surfaces"
+description = "true cylinders in the STEP"
+kind = "true_surfaces"
+min_cylinders = 18
+derivation = "Every drawn arc is a cylinder whatever is decided (18, as for the flat plate); counterbores add their seats on top."
+
+[[rubric]]
+id = "vibe"
+description = "a person judges whether the recess depth leaves a sensible floor"
+kind = "subjective"

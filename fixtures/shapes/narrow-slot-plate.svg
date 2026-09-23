@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="40mm" height="30mm" viewBox="0 0 40 30">
+  <!-- 40 x 30 plate with a 0.6 mm-wide, 15 mm-long slot: narrower than a 0.8 mm jet. -->
+  <rect x="0" y="0" width="40" height="30" fill="none" stroke="black"/>
+  <rect x="12.5" y="14.7" width="15" height="0.6"/>
+</svg>

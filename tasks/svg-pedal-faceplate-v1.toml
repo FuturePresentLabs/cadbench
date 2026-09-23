@@ -1,0 +1,72 @@
+id = "svg-pedal-faceplate-v1"
+family = "svg-part"
+brief = """
+A faceplate for a guitar effects pedal, waterjet cut from 3 mm aluminium \
+sheet: holes for three potentiometers, a footswitch, a status LED, and four \
+corner mounting screws. Every hole goes straight through the sheet.
+"""
+
+[input]
+svg = "../fixtures/shapes/pedal-faceplate.svg"
+height_mm = 3.0
+material = "5052-H32"
+
+[[rubric]]
+id = "stages"
+description = "every stage exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every decision the model made cleared the shared 0.7 bar"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the build completed"
+kind = "conforms"
+
+[[rubric]]
+id = "holes-through"
+description = "every hole goes through"
+kind = "decision"
+key = "holes_*"
+one_of = ["through"]
+
+[[rubric]]
+id = "volume"
+description = "the plate's volume, from its drawn shapes"
+kind = "volume_mm3"
+expected = 20691.8364
+tolerance = 0.05
+derivation = """
+Outline 120 x 60 R3 = 7200 - (4 - pi) * 9 = 7192.2744; holes pi/4 * \
+(3 * 7.2^2 + 12.2^2 + 5.0^2 + 4 * 3.4^2) = pi/4 * 375.6 = 294.9956. Net \
+6897.2788 mm^2 x 3 mm = 20691.8364 mm^3."""
+
+[[rubric]]
+id = "bounds"
+description = "120 x 60 x 3"
+kind = "bounds_mm"
+expected = [120.0, 60.0, 3.0]
+tolerance = 0.01
+
+[[rubric]]
+id = "true-surfaces"
+description = "true cylinders in the STEP"
+kind = "true_surfaces"
+min_cylinders = 22
+derivation = "9 holes x 2 faces (a full circle is split in two) + 4 outline corners = 22."
+
+[[rubric]]
+id = "cut"
+description = "a 0.8 mm waterjet cuts it in 10 pierces and a known path length"
+kind = "cut_plan"
+kerf_mm = 0.8
+pierces = 10
+length_mm = 499.3628
+tolerance_mm = 0.01
+derivation = """
+Outline 2*114 + 2*54 + 2*pi*3.4 = 357.3628; holes pi * (3*6.4 + 11.4 + 4.2 + \
+4*2.6) = 45.2 pi = 142.0000. Total 499.3628 mm. Pierces: 1 outline + 9 holes."""

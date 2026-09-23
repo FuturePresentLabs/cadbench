@@ -25,7 +25,7 @@ use std::process::Command;
 
 use serde::{Deserialize, Serialize};
 
-use crate::task::{Check, Task};
+use crate::task::{Check, ShapeInput, Task};
 
 /// Failures that stop a run before it can be scored.
 #[derive(Debug, thiserror::Error)]
@@ -54,6 +54,13 @@ pub enum RunError {
         path: String,
         #[source]
         source: serde_json::Error,
+    },
+    /// The task's `[input]` is not one this harness can hand a backend.
+    #[error("task {task}: input")]
+    Input {
+        task: String,
+        #[source]
+        source: toml::de::Error,
     },
     /// The backend cannot do something the task requires.
     ///
@@ -127,6 +134,35 @@ pub struct BuildStatus {
     pub failed: Option<String>,
 }
 
+/// `transmog step`'s report, schema `transmog.step.v1`: what the STEP export
+/// holds. Only the fields the rubric reads.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StepReport {
+    pub schema: String,
+    /// `occt-brep` (true surfaces) or `faceted-mesh`.
+    pub writer: String,
+    pub volume_mm3: f64,
+    pub bounds_mm: Option<[f64; 3]>,
+    pub surfaces: StepSurfaces,
+}
+
+/// Surface counts in a STEP export.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StepSurfaces {
+    pub cylinder: u32,
+}
+
+/// `transmog cut`'s report, schema `transmog.cut.v2`. Only the fields the
+/// rubric reads.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CutReport {
+    pub schema: String,
+    pub cut_length_mm: f64,
+    pub pierce_count: u32,
+}
+
 /// Everything one attempt produced.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunOutcome {
@@ -143,6 +179,12 @@ pub struct RunOutcome {
     /// see [`crate::scorer`], which fails a confidence criterion rather than
     /// vacuously passing it over zero decisions.
     pub decisions: Vec<DecisionRecord>,
+    /// The STEP export's report, when the rubric asked for one and it ran.
+    #[serde(default)]
+    pub step: Option<StepReport>,
+    /// The through-cut plan's report, likewise.
+    #[serde(default)]
+    pub cut: Option<CutReport>,
 }
 
 impl RunOutcome {
@@ -285,6 +327,16 @@ impl TransmogBackend {
 
 /// Name of the design stage, which turns the task's brief into a document.
 pub const STAGE_SPEC: &str = "spec";
+/// Name of the design stage for a task that hands over shapes: the shapes
+/// plus the brief become a document.
+pub const STAGE_DESIGN: &str = "design";
+/// Name of the STEP export stage.
+pub const STAGE_STEP: &str = "step";
+/// Name of the through-cut planning stage.
+pub const STAGE_CUT: &str = "cut";
+/// Schema tags the rubric reads, checked so a drifted report fails loudly.
+pub const STEP_REPORT_SCHEMA: &str = "transmog.step.v1";
+pub const CUT_REPORT_SCHEMA: &str = "transmog.cut.v2";
 /// Name of the build stage, shared with the scorer's reporting.
 pub const STAGE_BUILD: &str = "build-stream";
 /// Filename the design stage writes its `DesignDocument` RON to.
@@ -309,6 +361,10 @@ impl Backend<Check> for TransmogBackend {
         })?;
 
         let mut stages = Vec::new();
+        let shapes = ShapeInput::of(task).map_err(|source| RunError::Input {
+            task: task.id.clone(),
+            source,
+        })?;
 
         // `transmog spec <family> --brief <brief> --out <design> --trace
         // <decisions>` designs the part. The task's `family` goes through
@@ -317,6 +373,32 @@ impl Backend<Check> for TransmogBackend {
         // error in it rather than something this harness has an opinion about.
         let design_path = match &self.design {
             DesignSource::Fixture(path) => path.clone(),
+            DesignSource::Brief if shapes.is_some() => {
+                let input = shapes.as_ref().expect("guarded");
+                let design = workdir.join(DESIGN_FILE);
+                let mut args = vec![
+                    "design-svg".to_owned(),
+                    input.svg.display().to_string(),
+                    "--height".to_owned(),
+                    input.height_mm.to_string(),
+                    "--material".to_owned(),
+                    input.material.clone(),
+                    "--brief".to_owned(),
+                    task.brief.clone(),
+                    "--out".to_owned(),
+                    design.display().to_string(),
+                    "--trace".to_owned(),
+                    workdir.join(DECISION_TRACE_FILE).display().to_string(),
+                ];
+                if let Some(units) = &input.units {
+                    args.extend(["--units".to_owned(), units.clone()]);
+                }
+                if self.live {
+                    args.push("--live".to_owned());
+                }
+                stages.push(self.stage(STAGE_DESIGN, &args)?);
+                design
+            }
             DesignSource::Brief => {
                 let design = workdir.join(DESIGN_FILE);
                 let mut args = vec![
@@ -358,6 +440,57 @@ impl Backend<Check> for TransmogBackend {
             ],
         )?);
 
+        // The STEP export and the cut plan run only when the rubric asks
+        // about them: a stage nobody scores is one more way for an unrelated
+        // task to fail.
+        let checks = || task.rubric.iter().map(|c| &c.check);
+        let mut step = None;
+        if checks().any(|c| {
+            matches!(
+                c,
+                Check::VolumeMm3 { .. } | Check::BoundsMm { .. } | Check::TrueSurfaces { .. }
+            )
+        }) {
+            let run = self.stage(
+                STAGE_STEP,
+                &[
+                    "step".to_owned(),
+                    design_path.display().to_string(),
+                    "--out".to_owned(),
+                    workdir.join("part.step").display().to_string(),
+                ],
+            )?;
+            step = report(&run, STEP_REPORT_SCHEMA, |r: &StepReport| &r.schema)?;
+            stages.push(run);
+        }
+        let mut cut = None;
+        let kerfs: Vec<f64> = checks()
+            .filter_map(|c| match c {
+                Check::CutPlan { kerf_mm, .. } | Check::CutRefused { kerf_mm, .. } => Some(*kerf_mm),
+                _ => None,
+            })
+            .collect();
+        if let Some(&kerf) = kerfs.first() {
+            if kerfs.iter().any(|k| (k - kerf).abs() > f64::EPSILON) {
+                return Err(RunError::CapabilityMissing {
+                    backend: self.name().to_owned(),
+                    capability: "score more than one kerf per task".to_owned(),
+                    detail: format!("task {} asks for kerfs {kerfs:?}", task.id),
+                });
+            }
+            let run = self.stage(
+                STAGE_CUT,
+                &[
+                    "cut".to_owned(),
+                    design_path.display().to_string(),
+                    "--kerf".to_owned(),
+                    kerf.to_string(),
+                ],
+            )?;
+            cut = report(&run, CUT_REPORT_SCHEMA, |r: &CutReport| &r.schema)?;
+            stages.push(run);
+        }
+
         Ok(RunOutcome {
             task_id: task.id.clone(),
             backend: self.name().to_owned(),
@@ -366,8 +499,40 @@ impl Backend<Check> for TransmogBackend {
             design_path: Some(design_path),
             build: read_build_status(&build_dir.join("status.json"))?,
             decisions: read_decision_trace(&workdir.join(DECISION_TRACE_FILE))?,
+            step,
+            cut,
         })
     }
+}
+
+/// A stage's JSON report from its stdout, or `None` when the stage failed
+/// (a rubric outcome, not a harness error). A stage that succeeded but whose
+/// report does not parse, or carries another schema, is an error: the
+/// contract between harness and backend has drifted.
+///
+/// # Errors
+/// The stage exited 0 but its stdout is not the expected report.
+fn report<R: serde::de::DeserializeOwned>(
+    run: &StageRun,
+    schema: &str,
+    schema_of: impl Fn(&R) -> &String,
+) -> Result<Option<R>, RunError> {
+    if !run.ok() {
+        return Ok(None);
+    }
+    let what = format!("{} stdout", run.name);
+    let parsed: R = serde_json::from_str(&run.stdout).map_err(|source| RunError::ParseArtifact {
+        path: what.clone(),
+        source,
+    })?;
+    if schema_of(&parsed) != schema {
+        return Err(RunError::CapabilityMissing {
+            backend: "transmog".to_owned(),
+            capability: format!("report schema {schema}"),
+            detail: format!("{what} is {}", schema_of(&parsed)),
+        });
+    }
+    Ok(Some(parsed))
 }
 
 /// Reads `status.json`, or `None` if the build never wrote one.
@@ -443,6 +608,7 @@ mod tests {
             id: "t".to_owned(),
             family: "mounting-plate".to_owned(),
             brief: "A plate with a boss.".to_owned(),
+            input: None,
             rubric: Vec::new(),
         }
     }

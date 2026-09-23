@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120mm" height="60mm" viewBox="0 0 120 60">
+  <!-- Effects-pedal faceplate: outline 120 x 60, R3 corners. -->
+  <rect x="0" y="0" width="120" height="60" rx="3" fill="none" stroke="black"/>
+  <!-- Three potentiometers, 7.2 mm. -->
+  <circle cx="30" cy="40" r="3.6"/>
+  <circle cx="60" cy="40" r="3.6"/>
+  <circle cx="90" cy="40" r="3.6"/>
+  <!-- Footswitch, 12.2 mm; status LED, 5.0 mm. -->
+  <circle cx="60" cy="15" r="6.1"/>
+  <circle cx="60" cy="27" r="2.5"/>
+  <!-- Four M3 clearance holes, 3.4 mm (ISO 273 medium). -->
+  <circle cx="6" cy="6" r="1.7"/>
+  <circle cx="114" cy="6" r="1.7"/>
+  <circle cx="6" cy="54" r="1.7"/>
+  <circle cx="114" cy="54" r="1.7"/>
+</svg>

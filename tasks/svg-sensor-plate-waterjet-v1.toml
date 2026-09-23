@@ -1,0 +1,96 @@
+id = "svg-sensor-plate-waterjet-v1"
+family = "svg-part"
+brief = """
+A sensor mounting plate, waterjet cut from 6 mm aluminium sheet. Every shape \
+in the drawing goes all the way through the sheet: four screw clearance holes \
+in the corners, a window the sensor looks through, and a slot its cable \
+passes through.
+"""
+
+[input]
+svg = "../fixtures/shapes/sensor-plate.svg"
+height_mm = 6.0
+material = "6061-T6"
+
+[[rubric]]
+id = "stages"
+description = "every stage exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every decision the model made cleared the shared 0.7 bar"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the build completed"
+kind = "conforms"
+
+[[rubric]]
+id = "solid-body"
+description = "a flat plate is solid, not hollowed"
+kind = "decision"
+key = "body"
+one_of = ["solid"]
+
+[[rubric]]
+id = "holes-through"
+description = "the brief says every hole goes through"
+kind = "decision"
+key = "holes_*"
+one_of = ["through"]
+
+[[rubric]]
+id = "cutouts-through"
+description = "the brief says the window and the slot go through"
+kind = "decision"
+key = "cutout_*"
+one_of = ["through"]
+
+[[rubric]]
+id = "volume"
+description = "the plate's volume, from its drawn shapes"
+kind = "volume_mm3"
+expected = 19760.2938
+tolerance = 0.05
+derivation = """
+Area: outline 80 x 50 with R5 corners = 4000 - (4 - pi) * 25 = 3978.5398; \
+less four 3.4 mm holes 4 * pi * 1.7^2 = 36.3168; less the window 30 x 20 R2 \
+= 600 - (4 - pi) * 4 = 596.5664; less the slot 10 x 6 with full-round ends \
+= 4 * 6 + pi * 9 = 52.2743. Net 3293.3823 mm^2 x 6 mm = 19760.2938 mm^3. \
+Tolerance 0.05 mm^3 (2.5e-6 relative) covers the SVG's float32 coordinates."""
+
+[[rubric]]
+id = "bounds"
+description = "80 x 50 x 6"
+kind = "bounds_mm"
+expected = [80.0, 50.0, 6.0]
+tolerance = 0.01
+
+[[rubric]]
+id = "true-surfaces"
+description = "the STEP carries every drawn arc as a true cylinder"
+kind = "true_surfaces"
+min_cylinders = 18
+derivation = "4 holes x 2 faces (a full circle is split in two) + 4 outline corners + 4 window corners + 2 slot ends = 18."
+
+[[rubric]]
+id = "cut"
+description = "a 0.8 mm waterjet cuts it in 7 pierces and a known path length"
+kind = "cut_plan"
+kerf_mm = 0.8
+pierces = 7
+length_mm = 404.9911
+tolerance_mm = 0.01
+derivation = """
+Jet centre kerf/2 = 0.4 outside the part and inside each opening. Outline \
+2*70 + 2*40 + 2*pi*5.4 = 253.9292; window 2*26 + 2*16 + 2*pi*1.6 = 94.0531; \
+slot 2*4 + 2*pi*2.6 = 24.3363; holes 4 * pi * (3.4 - 0.8) = 32.6726. Total \
+404.9911 mm. Pierces: 1 outline + 4 holes + 2 cutouts = 7."""
+
+[[rubric]]
+id = "vibe"
+description = "a person looks at the render and the DXF"
+kind = "subjective"

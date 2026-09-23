@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="60mm" height="30mm" viewBox="0 0 60 30">
+  <!-- A plate with engraved text: text is not a shape the importer may guess at. -->
+  <rect x="0" y="0" width="60" height="30" fill="none" stroke="black"/>
+  <text x="10" y="18" font-size="8">FPL</text>
+</svg>
