@@ -42,6 +42,8 @@ pub enum Check {
     /// geometry the backend actually produced — ISO 1101 feature control
     /// frames evaluated against real datums, not merely present in the file.
     Conforms,
+    /// The generative pre-pass extracted the evaluator-owned stock oracle.
+    StartingStock,
     /// Not automated — a human fills this in. Named explicitly (not just
     /// "no check implemented yet") so a task file is honest about what it
     /// can't verify itself, and so "later every eval needs to be objective"
@@ -124,6 +126,27 @@ impl ShapeInput {
     pub fn of(task: &Task) -> Result<Option<Self>, toml::de::Error> {
         task.input
             .clone()
+            .filter(|table| table.contains_key("svg"))
+            .map(|table| Self::deserialize(toml::Value::Table(table)))
+            .transpose()
+    }
+}
+
+/// Public scoring oracle for facts the generative model must extract from the
+/// brief. These values are never sent to the backend.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BriefInput {
+    pub expected_stock_mm: [f64; 3],
+    pub expected_material: String,
+}
+
+impl BriefInput {
+    /// Returns a typed brief oracle only for non-SVG `[input]` tables.
+    pub fn of(task: &Task) -> Result<Option<Self>, toml::de::Error> {
+        task.input
+            .clone()
+            .filter(|table| !table.contains_key("svg"))
             .map(|table| Self::deserialize(toml::Value::Table(table)))
             .transpose()
     }
@@ -183,6 +206,11 @@ pub fn load(path: &Path) -> Result<Task, LoadError> {
             unreachable!("a ShapeInput always serializes to a table");
         };
         task.input = Some(table);
+    } else {
+        BriefInput::of(&task).map_err(|source| LoadError::Parse {
+            path: shown.clone(),
+            source,
+        })?;
     }
     let dir = path.parent().unwrap_or_else(|| Path::new("."));
     for criterion in &mut task.rubric {
@@ -308,7 +336,7 @@ mod tests {
                 |rule: &str, what: String| problems.push(format!("{name}: {rule} {what}"));
             let checks: Vec<&Check> = task.rubric.iter().map(|c| &c.check).collect();
             let refusal = refuses(&task.rubric);
-            if task.input.is_some() {
+            if ShapeInput::of(&task).ok().flatten().is_some() {
                 families_with_shapes.insert(task.family.clone());
                 // G2: a built part is checked against a number, not a feeling.
                 let geometric = checks
@@ -336,7 +364,12 @@ mod tests {
                             bad("G3", "volume_mm3 has no derivation".into());
                         }
                         if *tolerance > 1e-4 * expected.abs() {
-                            bad("G3", format!("volume tolerance {tolerance} is looser than 1e-4 of {expected}"));
+                            bad(
+                                "G3",
+                                format!(
+                                    "volume tolerance {tolerance} is looser than 1e-4 of {expected}"
+                                ),
+                            );
                         }
                     }
                     Check::BoundsMm { tolerance, .. } if *tolerance > 0.05 => {

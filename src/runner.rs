@@ -27,7 +27,7 @@ use eval::ModelSelection;
 use serde::{Deserialize, Serialize};
 
 use crate::lua_check::AssemblyFacts;
-use crate::task::{Check, ShapeInput, Task};
+use crate::task::{BriefInput, Check, ShapeInput, Task};
 
 /// Failures that stop a run before it can be scored.
 #[derive(Debug, thiserror::Error)]
@@ -122,6 +122,16 @@ pub struct DecisionRecord {
     pub confidence: f64,
 }
 
+/// Generative model output captured before bounded RLCD decisions begin.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StartingStock {
+    pub schema: String,
+    pub size_mm: [f64; 3],
+    pub material: String,
+    pub model: String,
+    pub basis: String,
+}
+
 /// `status.json` from `transmog build-stream`, schema
 /// `transmog.build.stream.v1`.
 ///
@@ -191,6 +201,9 @@ pub struct RunOutcome {
     /// see [`crate::scorer`], which fails a confidence criterion rather than
     /// vacuously passing it over zero decisions.
     pub decisions: Vec<DecisionRecord>,
+    /// Typed stock facts extracted from the brief, if this task requests them.
+    #[serde(default)]
+    pub starting_stock: Option<StartingStock>,
     /// The STEP export's report, when the rubric asked for one and it ran.
     #[serde(default)]
     pub step: Option<StepReport>,
@@ -360,6 +373,8 @@ impl TransmogBackend {
 
 /// Name of the design stage, which turns the task's brief into a document.
 pub const STAGE_SPEC: &str = "spec";
+/// Open-ended but narrow extraction, before RLCD geometry decisions.
+pub const STAGE_EXTRACT_STOCK: &str = "extract-stock";
 /// Name of the design stage for a task that hands over shapes: the shapes
 /// plus the brief become a document.
 pub const STAGE_DESIGN: &str = "design";
@@ -378,6 +393,8 @@ pub const DESIGN_FILE: &str = "design.ron";
 pub const BUILD_STATUS_SCHEMA: &str = "transmog.build.stream.v1";
 /// Decision trace filename the harness looks for in the work directory.
 pub const DECISION_TRACE_FILE: &str = "decisions.json";
+/// Persisted generative extraction shown and scored independently.
+pub const STARTING_STOCK_FILE: &str = "starting-stock.json";
 /// Backend-neutral assembly facts filename.
 pub const EVAL_FACTS_FILE: &str = "eval-facts.json";
 
@@ -400,6 +417,37 @@ impl Backend<Check> for TransmogBackend {
             task: task.id.clone(),
             source,
         })?;
+        let brief_input = BriefInput::of(task).map_err(|source| RunError::Input {
+            task: task.id.clone(),
+            source,
+        })?;
+        let mut starting_stock = None;
+        if brief_input.is_some() && matches!(self.design, DesignSource::Brief) {
+            let model =
+                self.models
+                    .llm_model
+                    .as_deref()
+                    .ok_or_else(|| RunError::CapabilityMissing {
+                        backend: self.name().to_owned(),
+                        capability: "generative starting-stock extraction".to_owned(),
+                        detail: "task has a brief input oracle but --llm-model was not provided"
+                            .to_owned(),
+                    })?;
+            let path = workdir.join(STARTING_STOCK_FILE);
+            stages.push(self.stage(
+                STAGE_EXTRACT_STOCK,
+                &[
+                    "extract-stock".to_owned(),
+                    "--brief".to_owned(),
+                    task.brief.clone(),
+                    "--model".to_owned(),
+                    model.to_owned(),
+                    "--out".to_owned(),
+                    path.display().to_string(),
+                ],
+            )?);
+            starting_stock = read_starting_stock(&path)?;
+        }
 
         // `transmog spec <family> --brief <brief> --out <design> --trace
         // <decisions>` designs the part. The task's `family` goes through
@@ -446,6 +494,16 @@ impl Backend<Check> for TransmogBackend {
                     "--trace".to_owned(),
                     workdir.join(DECISION_TRACE_FILE).display().to_string(),
                 ];
+                if let Some(stock) = &starting_stock {
+                    args.extend([
+                        "--stock-mm".to_owned(),
+                        stock.size_mm[0].to_string(),
+                        stock.size_mm[1].to_string(),
+                        stock.size_mm[2].to_string(),
+                        "--material".to_owned(),
+                        stock.material.clone(),
+                    ]);
+                }
                 if self.live {
                     args.push("--live".to_owned());
                 }
@@ -541,11 +599,36 @@ impl Backend<Check> for TransmogBackend {
             design_path: Some(design_path),
             build: read_build_status(&build_dir.join("status.json"))?,
             decisions: read_decision_trace(&workdir.join(DECISION_TRACE_FILE))?,
+            starting_stock,
             step,
             cut,
             eval_facts: read_eval_facts(&workdir.join(EVAL_FACTS_FILE))?,
         })
     }
+}
+
+/// Reads the narrow generative artifact; absence after a failed stage is a result.
+pub fn read_starting_stock(path: &Path) -> Result<Option<StartingStock>, RunError> {
+    if !path.exists() {
+        return Ok(None);
+    }
+    let text = std::fs::read_to_string(path).map_err(|source| RunError::Artifact {
+        path: path.display().to_string(),
+        source,
+    })?;
+    let stock: StartingStock =
+        serde_json::from_str(&text).map_err(|source| RunError::ParseArtifact {
+            path: path.display().to_string(),
+            source,
+        })?;
+    if stock.schema != "transmog.starting-stock.v1" {
+        return Err(RunError::CapabilityMissing {
+            backend: "transmog".into(),
+            capability: "starting-stock schema transmog.starting-stock.v1".into(),
+            detail: format!("artifact is {}", stock.schema),
+        });
+    }
+    Ok(Some(stock))
 }
 
 /// Reads public assembly facts, or `None` when a backend did not emit them.
@@ -770,9 +853,11 @@ mod tests {
     fn a_missing_status_file_is_absence_not_failure() {
         let missing = Path::new("/nonexistent/status.json");
         assert!(read_build_status(missing).expect("absence is ok").is_none());
-        assert!(read_decision_trace(missing)
-            .expect("absence is ok")
-            .is_empty());
+        assert!(
+            read_decision_trace(missing)
+                .expect("absence is ok")
+                .is_empty()
+        );
     }
 
     #[test]

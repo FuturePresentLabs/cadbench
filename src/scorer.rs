@@ -9,7 +9,7 @@
 pub use eval::{CriterionResult, ScoreReport, Verdict};
 
 use crate::runner::RunOutcome;
-use crate::task::{Check, Task};
+use crate::task::{BriefInput, Check, Task};
 
 /// Scores `outcome` against `task`'s rubric.
 #[must_use]
@@ -20,8 +20,8 @@ pub fn score(task: &Task, outcome: &RunOutcome) -> ScoreReport {
         .map(|criterion| CriterionResult {
             id: criterion.id.clone(),
             description: criterion.description.clone(),
-            verdict: verdict_for(&criterion.check, outcome),
-            detail: detail_for(&criterion.check, outcome),
+            verdict: verdict_for(&criterion.check, task, outcome),
+            detail: detail_for(&criterion.check, task, outcome),
         })
         .collect();
 
@@ -32,7 +32,7 @@ pub fn score(task: &Task, outcome: &RunOutcome) -> ScoreReport {
     }
 }
 
-fn verdict_for(check: &Check, outcome: &RunOutcome) -> Verdict {
+fn verdict_for(check: &Check, task: &Task, outcome: &RunOutcome) -> Verdict {
     match check {
         Check::StagesPass => {
             if !outcome.stages.is_empty() && outcome.stages.iter().all(|s| s.ok()) {
@@ -56,6 +56,7 @@ fn verdict_for(check: &Check, outcome: &RunOutcome) -> Verdict {
             }
         }
         Check::Conforms => conforms_verdict(outcome),
+        Check::StartingStock => starting_stock_result(task, outcome).0,
         Check::Subjective => Verdict::NeedsHuman,
         strict => judge(strict, outcome).0,
     }
@@ -221,10 +222,54 @@ fn judge(check: &Check, outcome: &RunOutcome) -> (Verdict, String) {
         Check::StagesPass
         | Check::MinDecisionConfidence { .. }
         | Check::Conforms
+        | Check::StartingStock
         | Check::Subjective => {
             unreachable!("judged by verdict_for/detail_for directly")
         }
     }
+}
+
+fn starting_stock_result(task: &Task, outcome: &RunOutcome) -> (Verdict, String) {
+    let expected = match BriefInput::of(task) {
+        Ok(Some(value)) => value,
+        Ok(None) => return (Verdict::Fail, "task has no brief input oracle".into()),
+        Err(error) => {
+            return (
+                Verdict::Fail,
+                format!("invalid brief input oracle: {error}"),
+            );
+        }
+    };
+    let Some(got) = &outcome.starting_stock else {
+        return (
+            Verdict::Fail,
+            "starting-stock extraction was not recorded".into(),
+        );
+    };
+    let dimensions_match = got
+        .size_mm
+        .iter()
+        .zip(expected.expected_stock_mm)
+        .all(|(got, expected)| (got - expected).abs() <= 1e-6);
+    let material_matches = got
+        .material
+        .eq_ignore_ascii_case(&expected.expected_material);
+    (
+        if dimensions_match && material_matches {
+            Verdict::Pass
+        } else {
+            Verdict::Fail
+        },
+        format!(
+            "{} × {} × {} mm, {} (expected {:?} mm, {})",
+            got.size_mm[0],
+            got.size_mm[1],
+            got.size_mm[2],
+            got.material,
+            expected.expected_stock_mm,
+            expected.expected_material
+        ),
+    )
 }
 
 /// **Known shortcut, not the real check.** Real conformance is "does the
@@ -247,7 +292,7 @@ fn conforms_verdict(outcome: &RunOutcome) -> Verdict {
     }
 }
 
-fn detail_for(check: &Check, outcome: &RunOutcome) -> String {
+fn detail_for(check: &Check, task: &Task, outcome: &RunOutcome) -> String {
     match check {
         Check::StagesPass => {
             // The stage and the last thing it said: a failure that does not
@@ -308,6 +353,7 @@ fn detail_for(check: &Check, outcome: &RunOutcome) -> String {
                 None => format!("build incomplete ({}/{} steps)", b.done, b.total),
             },
         },
+        Check::StartingStock => starting_stock_result(task, outcome).1,
         Check::Subjective => "not automated — needs a human".to_owned(),
         strict => judge(strict, outcome).1,
     }
@@ -341,6 +387,7 @@ mod tests {
             design_path: None,
             build: None,
             decisions: vec![],
+            starting_stock: None,
             step: None,
             cut: None,
             eval_facts: None,
@@ -483,9 +530,11 @@ mod tests {
         }];
         let report = score(&task, &outcome);
         assert_eq!(report.results[0].verdict, Verdict::NeedsHuman);
-        assert!(report.results[0]
-            .detail
-            .contains("no model-authored decisions"));
+        assert!(
+            report.results[0]
+                .detail
+                .contains("no model-authored decisions")
+        );
     }
 
     #[test]

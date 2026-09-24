@@ -87,6 +87,19 @@ fn main() -> ExitCode {
 }
 
 fn run_suite(args: &Args) -> ExitCode {
+    if !args.live {
+        eprintln!(
+            "error: --all requires --live; recorded responses belong to one captured brief and \
+             cannot be scored as a multi-prompt model benchmark"
+        );
+        return ExitCode::FAILURE;
+    }
+    if args.fixture.is_some() {
+        eprintln!(
+            "error: --all cannot use --fixture; one design artifact cannot represent multiple prompts"
+        );
+        return ExitCode::FAILURE;
+    }
     let suite = eval::run_all(&args.tasks_dir, &args.out, |task, workdir| {
         run_one(task, workdir, args)
     });

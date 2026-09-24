@@ -96,10 +96,13 @@ Prints the scored rubric as JSON. Exits non-zero if any *automated*
 criterion failed — `Verdict::NeedsHuman` (the `subjective` checks) never
 fails the run; it's reported separately as still needing a person.
 
-`--all` gives every task an isolated child of `--out`, continues after an
-individual backend error, and writes the shared `eval.suite-report.v1`
-aggregate to `suite-report.json`. Nested `tasks/planned/` contracts are not
-run until they are promoted.
+`--all` requires `--live`. Recorded responses belong to one captured brief,
+and one `--fixture` design cannot represent a multi-prompt model benchmark;
+CADBench refuses both rather than publishing duplicated artifacts as a model
+score. Every task gets an isolated child of `--out`, individual backend errors
+do not stop the suite, and the shared `eval.suite-report.v1` aggregate is
+written to `suite-report.json`. Nested `tasks/planned/` contracts are not run
+until they are promoted.
 
 Pass `--binary /path/to/transmog` instead of relying on `cargo run
 --release` under the hood if you already have one built — a cargo build
@@ -176,7 +179,26 @@ fit callout, not against a made-up bar.
 TOML, one file per task under `tasks/`. Each `[[rubric]]` entry is one
 criterion:
 
+Brief-driven tasks may include an evaluator-only oracle:
+
+```toml
+[input]
+expected_stock_mm = [100.0, 60.0, 20.0]
+expected_material = "304 stainless steel"
+
+[[rubric]]
+id = "starting-stock"
+description = "the generative model extracted the stated stock"
+kind = "starting_stock"
+```
+
+The harness sends only `brief` to the backend's generative extraction stage.
+It scores the resulting `starting-stock.json` against `[input]`, then fixes
+that stock before RLCD makes bounded geometry decisions. The oracle is never
+included in either model request.
+
 - `stages_pass` — every stage that ran exited 0.
+- `starting_stock` — extracted dimensions and material match the task oracle.
 - `min_decision_confidence` (`threshold`) — every recorded typed decision
   cleared the bar. No decisions recorded fails this rather than passing it
   vacuously.

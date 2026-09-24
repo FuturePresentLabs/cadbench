@@ -12,6 +12,17 @@ standard +/-0.15mm positional tolerance. Datums should come from the \
 plate's own stock faces and the boss.
 """
 
+# Public oracle used only by CADBench scoring. The backend receives the brief,
+# never these expected values.
+[input]
+expected_stock_mm = [100.0, 60.0, 20.0]
+expected_material = "304 stainless steel"
+
+[[rubric]]
+id = "starting-stock"
+description = "the generative model extracted the stated starting stock and material"
+kind = "starting_stock"
+
 [[rubric]]
 id = "stages"
 description = "every pipeline stage that ran exited 0"
