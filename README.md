@@ -78,11 +78,19 @@ cargo run -- --all --tasks-dir tasks --repo /path/to/transmog --out cadbench-res
 # that reaches the network unasked produces numbers nobody can reproduce.
 cargo run -- tasks/mounting-plate-v1.toml --repo /path/to/transmog --live
 
+# Pin both model roles independently. This backend consumes the RLCD model;
+# the LLM identity is retained for comparable cross-harness provenance.
+cargo run -- tasks/mounting-plate-v1.toml --repo /path/to/transmog --live \
+    --llm-model anthropic/claude-sonnet-4.5 --rlcd-model fpl/decide
+
 # Build-and-conformance regression only, no design agent in the loop.
 cargo run -- tasks/mounting-plate-v1.toml \
     --repo /path/to/transmog \
     --fixture /path/to/some-design.ron
 ```
+
+The shared `eval::ModelSelection` owns these flags across PCB/CAD/CAM/DFM.
+`EVAL_LLM_MODEL` and `EVAL_RLCD_MODEL` are their environment equivalents.
 
 Prints the scored rubric as JSON. Exits non-zero if any *automated*
 criterion failed — `Verdict::NeedsHuman` (the `subjective` checks) never

@@ -23,6 +23,7 @@ pub use eval::Backend;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use eval::ModelSelection;
 use serde::{Deserialize, Serialize};
 
 use crate::lua_check::AssemblyFacts;
@@ -176,6 +177,9 @@ pub struct CutReport {
 pub struct RunOutcome {
     pub task_id: String,
     pub backend: String,
+    /// Independent model roles used by this configuration.
+    #[serde(default)]
+    pub models: ModelSelection,
     pub workdir: PathBuf,
     /// In execution order.
     pub stages: Vec<StageRun>,
@@ -249,6 +253,8 @@ pub struct TransmogBackend {
     /// loudly without one — which surfaces here as a failed stage, not as a
     /// quiet fallback to the recording.
     pub live: bool,
+    /// Independent outer-generative and bounded-decision model identities.
+    pub models: ModelSelection,
 }
 
 impl TransmogBackend {
@@ -260,6 +266,7 @@ impl TransmogBackend {
             binary: None,
             design,
             live: false,
+            models: ModelSelection::default(),
         }
     }
 
@@ -274,6 +281,13 @@ impl TransmogBackend {
     #[must_use]
     pub fn live(mut self, live: bool) -> Self {
         self.live = live;
+        self
+    }
+
+    /// Selects and records the two independent model roles.
+    #[must_use]
+    pub fn with_models(mut self, models: ModelSelection) -> Self {
+        self.models = models;
         self
     }
 
@@ -313,19 +327,26 @@ impl TransmogBackend {
     fn stage(&self, name: &str, args: &[String]) -> Result<StageRun, RunError> {
         let (program, mut argv) = self.invocation();
         argv.extend_from_slice(args);
-        let command = std::iter::once(program.display().to_string())
+        let command = self
+            .models
+            .rlcd_model
+            .iter()
+            .map(|model| format!("BIFROST_MODEL={model}"))
+            .chain(std::iter::once(program.display().to_string()))
             .chain(argv.iter().cloned())
             .collect::<Vec<_>>()
             .join(" ");
 
-        let output = Command::new(&program)
-            .args(&argv)
-            .output()
-            .map_err(|source| RunError::Spawn {
-                stage: name.to_owned(),
-                program: program.display().to_string(),
-                source,
-            })?;
+        let mut process = Command::new(&program);
+        process.args(&argv);
+        if let Some(model) = &self.models.rlcd_model {
+            process.env("BIFROST_MODEL", model);
+        }
+        let output = process.output().map_err(|source| RunError::Spawn {
+            stage: name.to_owned(),
+            program: program.display().to_string(),
+            source,
+        })?;
 
         Ok(StageRun {
             name: name.to_owned(),
@@ -514,6 +535,7 @@ impl Backend<Check> for TransmogBackend {
         Ok(RunOutcome {
             task_id: task.id.clone(),
             backend: self.name().to_owned(),
+            models: self.models.clone(),
             workdir: workdir.to_path_buf(),
             stages,
             design_path: Some(design_path),

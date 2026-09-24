@@ -11,7 +11,7 @@ use anyhow::{Context as _, Result};
 use cadbench::runner::{Backend, DesignSource, RunError, TransmogBackend};
 use cadbench::scorer::score;
 use clap::Parser;
-use eval::ScoreReport;
+use eval::{ModelSelection, ScoreReport};
 
 #[derive(Parser)]
 #[command(about = "Eval harness for typed-decision-driven CAD design agents")]
@@ -49,6 +49,10 @@ struct Args {
     /// numbers nobody else can reproduce.
     #[arg(long)]
     live: bool,
+
+    /// Independent outer-LLM and RLCD model identities.
+    #[command(flatten)]
+    models: ModelSelection,
 
     /// Directory to write run artifacts into.
     #[arg(long, default_value = "cadbench-run")]
@@ -113,7 +117,9 @@ fn run_one(task_path: &std::path::Path, out: &std::path::Path, args: &Args) -> R
         Some(path) => DesignSource::Fixture(path.clone()),
         None => DesignSource::Brief,
     };
-    let mut backend = TransmogBackend::new(&args.repo, design).live(args.live);
+    let mut backend = TransmogBackend::new(&args.repo, design)
+        .live(args.live)
+        .with_models(args.models.clone());
     if let Some(binary) = &args.binary {
         backend = backend.with_binary(binary);
     }

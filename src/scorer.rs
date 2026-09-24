@@ -335,6 +335,7 @@ mod tests {
         RunOutcome {
             task_id: "t".into(),
             backend: "transmog".into(),
+            models: eval::ModelSelection::default(),
             workdir: PathBuf::from("/tmp/x"),
             stages: vec![],
             design_path: None,
