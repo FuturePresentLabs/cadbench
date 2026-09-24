@@ -199,6 +199,8 @@ included in either model request.
 
 - `stages_pass` — every stage that ran exited 0.
 - `starting_stock` — extracted dimensions and material match the task oracle.
+- `product_inputs` — board, material, ingress target, fastener, and ISO 273
+  clearance series extracted from the brief match the public rubric.
 - `min_decision_confidence` (`threshold`) — every recorded typed decision
   cleared the bar. No decisions recorded fails this rather than passing it
   vacuously.
