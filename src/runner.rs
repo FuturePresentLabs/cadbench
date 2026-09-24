@@ -546,6 +546,8 @@ impl Backend<Check> for TransmogBackend {
                         workdir.join("recipe-context.json").display().to_string(),
                         "--composition".to_owned(),
                         workdir.join("composition.json").display().to_string(),
+                        "--project".to_owned(),
+                        workdir.display().to_string(),
                     ],
                 )?);
                 design
@@ -908,6 +910,7 @@ mod tests {
             "product-inputs.json",
             "recipe-context.json",
             "composition.json",
+            "--project",
         ] {
             assert!(recipe.contains(expected), "missing {expected}: {recipe}");
         }
