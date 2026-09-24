@@ -57,6 +57,24 @@ fn verdict_for(check: &Check, task: &Task, outcome: &RunOutcome) -> Verdict {
         }
         Check::Conforms => conforms_verdict(outcome),
         Check::StartingStock => starting_stock_result(task, outcome).0,
+        Check::ProductInputs {
+            board,
+            material,
+            ip,
+            fastener,
+            clearance_series,
+        } => outcome.product_inputs.as_ref().map_or(Verdict::Fail, |got| {
+            if got.board == *board
+                && got.material.eq_ignore_ascii_case(material)
+                && got.ip == *ip
+                && got.fastener == *fastener
+                && got.clearance_series == *clearance_series
+            {
+                Verdict::Pass
+            } else {
+                Verdict::Fail
+            }
+        }),
         Check::Subjective => Verdict::NeedsHuman,
         strict => judge(strict, outcome).0,
     }
@@ -223,6 +241,7 @@ fn judge(check: &Check, outcome: &RunOutcome) -> (Verdict, String) {
         | Check::MinDecisionConfidence { .. }
         | Check::Conforms
         | Check::StartingStock
+        | Check::ProductInputs { .. }
         | Check::Subjective => {
             unreachable!("judged by verdict_for/detail_for directly")
         }
@@ -354,6 +373,19 @@ fn detail_for(check: &Check, task: &Task, outcome: &RunOutcome) -> String {
             },
         },
         Check::StartingStock => starting_stock_result(task, outcome).1,
+        Check::ProductInputs {
+            board,
+            material,
+            ip,
+            fastener,
+            clearance_series,
+        } => outcome.product_inputs.as_ref().map_or_else(
+            || "product-input extraction was not recorded".to_owned(),
+            |got| format!(
+                "board {}, material {}, {}, {} ISO 273 {} (expected {board}, {material}, {ip}, {fastener} ISO 273 {clearance_series})",
+                got.board, got.material, got.ip, got.fastener, got.clearance_series
+            ),
+        ),
         Check::Subjective => "not automated — needs a human".to_owned(),
         strict => judge(strict, outcome).1,
     }
@@ -388,6 +420,7 @@ mod tests {
             build: None,
             decisions: vec![],
             starting_stock: None,
+            product_inputs: None,
             step: None,
             cut: None,
             eval_facts: None,

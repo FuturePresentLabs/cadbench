@@ -1,0 +1,55 @@
+id = "board-enclosure-pi4-vented-v1"
+family = "board-enclosure"
+brief = """
+Design a ventilated, product-like desktop enclosure for a Raspberry Pi 4 Model
+B in ABS. Use M2.5 fasteners through ISO 273 fine-series clearance holes. Keep
+every board connector independently accessible, use a matching removable lid,
+and expose exact curved geometry rather than a plain rectangular block. The
+open passive ventilation must be reported honestly as IP20; do not imply a
+sealed or water-resistant enclosure.
+"""
+
+[[rubric]]
+id = "product-inputs"
+description = "the generative pre-pass extracted the board, material, ingress target, and specified fastener standard"
+kind = "product_inputs"
+board = "raspberry-pi-4b"
+material = "ABS"
+ip = "IP20"
+fastener = "M2.5"
+clearance_series = "fine"
+
+[[rubric]]
+id = "stages"
+description = "the brief-driven recipe, build, and multi-body viewer stream all exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every bounded enclosure decision cleared the shared confidence bar"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the generated multi-body geometry builds without a kernel refusal"
+kind = "conforms"
+
+[[rubric]]
+id = "ports"
+description = "the independent-access requirement selects individual connector openings"
+kind = "decision"
+key = "port_strategy"
+one_of = ["individual"]
+
+[[rubric]]
+id = "ventilation"
+description = "the requested ventilated IP20 case selects an open passive vent strategy"
+kind = "decision"
+key = "vent_strategy"
+one_of = ["slot_grille", "hooded_side"]
+
+[[rubric]]
+id = "review"
+description = "the base, lid, ports, standoffs, curved silhouette, and ventilation form a credible serviceable product"
+kind = "subjective"

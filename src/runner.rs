@@ -132,6 +132,19 @@ pub struct StartingStock {
     pub basis: String,
 }
 
+/// Brief-derived product inputs shared across enclosure backends.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProductInputs {
+    pub schema: String,
+    pub board: String,
+    pub material: String,
+    pub ip: String,
+    pub fastener: String,
+    pub clearance_series: String,
+    pub model: String,
+    pub basis: String,
+}
+
 /// `status.json` from `transmog build-stream`, schema
 /// `transmog.build.stream.v1`.
 ///
@@ -204,6 +217,8 @@ pub struct RunOutcome {
     /// Typed stock facts extracted from the brief, if this task requests them.
     #[serde(default)]
     pub starting_stock: Option<StartingStock>,
+    #[serde(default)]
+    pub product_inputs: Option<ProductInputs>,
     /// The STEP export's report, when the rubric asked for one and it ran.
     #[serde(default)]
     pub step: Option<StepReport>,
@@ -378,6 +393,8 @@ pub const STAGE_EXTRACT_STOCK: &str = "extract-stock";
 /// Name of the design stage for a task that hands over shapes: the shapes
 /// plus the brief become a document.
 pub const STAGE_DESIGN: &str = "design";
+/// Brief extraction followed by a Lua-owned board-enclosure recipe.
+pub const STAGE_RECIPE: &str = "recipe";
 /// Name of the STEP export stage.
 pub const STAGE_STEP: &str = "step";
 /// Name of the through-cut planning stage.
@@ -387,6 +404,8 @@ pub const STEP_REPORT_SCHEMA: &str = "transmog.step.v1";
 pub const CUT_REPORT_SCHEMA: &str = "transmog.cut.v2";
 /// Name of the build stage, shared with the scorer's reporting.
 pub const STAGE_BUILD: &str = "build-stream";
+/// Multi-body viewer stream emitted for assembly tasks.
+pub const STAGE_ASSEMBLY: &str = "assembly-stream";
 /// Filename the design stage writes its `DesignDocument` RON to.
 pub const DESIGN_FILE: &str = "design.ron";
 /// Schema tag `transmog build-stream` writes into `status.json`.
@@ -395,6 +414,8 @@ pub const BUILD_STATUS_SCHEMA: &str = "transmog.build.stream.v1";
 pub const DECISION_TRACE_FILE: &str = "decisions.json";
 /// Persisted generative extraction shown and scored independently.
 pub const STARTING_STOCK_FILE: &str = "starting-stock.json";
+/// Brief-derived product inputs used before the RLCD loop.
+pub const PRODUCT_INPUTS_FILE: &str = "product-inputs.json";
 /// Backend-neutral assembly facts filename.
 pub const EVAL_FACTS_FILE: &str = "eval-facts.json";
 
@@ -482,6 +503,51 @@ impl Backend<Check> for TransmogBackend {
                 stages.push(self.stage(STAGE_DESIGN, &args)?);
                 design
             }
+            DesignSource::Brief if task.family == "board-enclosure" => {
+                if !self.live {
+                    return Err(RunError::CapabilityMissing {
+                        backend: self.name().to_owned(),
+                        capability: "run a board recipe without --live".to_owned(),
+                        detail: "both generative extraction and RLCD decisions are live".to_owned(),
+                    });
+                }
+                let model = self.models.llm_model.as_deref().ok_or_else(|| {
+                    RunError::CapabilityMissing {
+                        backend: self.name().to_owned(),
+                        capability: "extract product inputs from the brief".to_owned(),
+                        detail: "board-enclosure tasks require --llm-model".to_owned(),
+                    }
+                })?;
+                let design = workdir.join(DESIGN_FILE);
+                stages.push(self.stage(
+                    STAGE_RECIPE,
+                    &[
+                        "recipe".to_owned(),
+                        "--recipe".to_owned(),
+                        self.repo
+                            .join("assets/design_recipes/electronics_enclosure.lua")
+                            .display()
+                            .to_string(),
+                        "--brief".to_owned(),
+                        task.brief.clone(),
+                        "--model".to_owned(),
+                        model.to_owned(),
+                        "--boards-dir".to_owned(),
+                        self.repo.join("assets/boards").display().to_string(),
+                        "--inputs".to_owned(),
+                        workdir.join(PRODUCT_INPUTS_FILE).display().to_string(),
+                        "--out".to_owned(),
+                        design.display().to_string(),
+                        "--trace".to_owned(),
+                        workdir.join(DECISION_TRACE_FILE).display().to_string(),
+                        "--context".to_owned(),
+                        workdir.join("recipe-context.json").display().to_string(),
+                        "--composition".to_owned(),
+                        workdir.join("composition.json").display().to_string(),
+                    ],
+                )?);
+                design
+            }
             DesignSource::Brief => {
                 let design = workdir.join(DESIGN_FILE);
                 let mut args = vec![
@@ -532,6 +598,19 @@ impl Backend<Check> for TransmogBackend {
                 build_dir.display().to_string(),
             ],
         )?);
+        if task.family == "board-enclosure" {
+            stages.push(self.stage(
+                STAGE_ASSEMBLY,
+                &[
+                    "assembly-stream".to_owned(),
+                    design_path.display().to_string(),
+                    "--out".to_owned(),
+                    workdir.join("assembly").display().to_string(),
+                    "--explode".to_owned(),
+                    "8".to_owned(),
+                ],
+            )?);
+        }
 
         // The STEP export and the cut plan run only when the rubric asks
         // about them: a stage nobody scores is one more way for an unrelated
@@ -600,11 +679,35 @@ impl Backend<Check> for TransmogBackend {
             build: read_build_status(&build_dir.join("status.json"))?,
             decisions: read_decision_trace(&workdir.join(DECISION_TRACE_FILE))?,
             starting_stock,
+            product_inputs: read_product_inputs(&workdir.join(PRODUCT_INPUTS_FILE))?,
             step,
             cut,
             eval_facts: read_eval_facts(&workdir.join(EVAL_FACTS_FILE))?,
         })
     }
+}
+
+fn read_product_inputs(path: &Path) -> Result<Option<ProductInputs>, RunError> {
+    if !path.exists() {
+        return Ok(None);
+    }
+    let text = std::fs::read_to_string(path).map_err(|source| RunError::Artifact {
+        path: path.display().to_string(),
+        source,
+    })?;
+    let value: ProductInputs =
+        serde_json::from_str(&text).map_err(|source| RunError::ParseArtifact {
+            path: path.display().to_string(),
+            source,
+        })?;
+    if value.schema != "cadbench.product-inputs.v1" {
+        return Err(RunError::CapabilityMissing {
+            backend: "transmog".into(),
+            capability: "product-input schema cadbench.product-inputs.v1".into(),
+            detail: format!("artifact is {}", value.schema),
+        });
+    }
+    Ok(Some(value))
 }
 
 /// Reads the narrow generative artifact; absence after a failed stage is a result.
@@ -755,6 +858,45 @@ mod tests {
             input: None,
             rubric: Vec::new(),
         }
+    }
+
+    #[test]
+    fn board_enclosure_remains_brief_driven() {
+        let dir = std::env::temp_dir().join("cadbench-board-recipe-invocation");
+        let _ = std::fs::remove_dir_all(&dir);
+        let mut task = brief_task();
+        task.family = "board-enclosure".into();
+        let outcome = TransmogBackend::new("/repo", DesignSource::Brief)
+            .with_binary("/usr/bin/true")
+            .live(true)
+            .with_models(ModelSelection {
+                llm_model: Some("or/z-ai/glm-5.3-flash".into()),
+                rlcd_model: Some("fpl/decide".into()),
+            })
+            .run(&task, &dir)
+            .expect("stages run");
+        assert_eq!(
+            outcome
+                .stages
+                .iter()
+                .map(|stage| stage.name.as_str())
+                .collect::<Vec<_>>(),
+            [STAGE_RECIPE, STAGE_BUILD, STAGE_ASSEMBLY]
+        );
+        let recipe = &outcome.stages[0].command;
+        for expected in [
+            "--brief A plate with a boss.",
+            "--model or/z-ai/glm-5.3-flash",
+            "--boards-dir /repo/assets/boards",
+            "product-inputs.json",
+            "recipe-context.json",
+            "composition.json",
+        ] {
+            assert!(recipe.contains(expected), "missing {expected}: {recipe}");
+        }
+        assert!(!recipe.contains("--board "), "board must come from the brief");
+        assert!(!recipe.contains("--material "), "material must come from the brief");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// The design stage must invoke the backend's real entry point, with the

@@ -44,6 +44,15 @@ pub enum Check {
     Conforms,
     /// The generative pre-pass extracted the evaluator-owned stock oracle.
     StartingStock,
+    /// Open-ended extraction recovered the product facts explicitly stated by
+    /// the brief before bounded geometry decisions began.
+    ProductInputs {
+        board: String,
+        material: String,
+        ip: String,
+        fastener: String,
+        clearance_series: String,
+    },
     /// Not automated — a human fills this in. Named explicitly (not just
     /// "no check implemented yet") so a task file is honest about what it
     /// can't verify itself, and so "later every eval needs to be objective"
