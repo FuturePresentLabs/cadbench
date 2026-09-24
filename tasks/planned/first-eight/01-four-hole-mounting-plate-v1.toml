@@ -1,0 +1,55 @@
+# FIRST-EIGHT TARGET -- immutable task specification. Promote to tasks/ after
+# its baseline run is recorded; do not weaken the rubric to make a backend pass.
+
+id = "first-eight-four-hole-mounting-plate-v1"
+family = "four-hole-mounting-plate"
+brief = """
+Machine a 100 x 60 x 12 mm rectangular 6061-T6 mounting plate. Four M6 normal-
+clearance through holes lie on an 80 x 40 mm rectangular pattern centred on the
+plate. A 20 mm through bore at the centre locates a mating cylindrical boss;
+hold that bore perpendicular to the broad mounting face and locate it from the
+plate centre.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every bounded design decision cleared the shared confidence bar"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the built geometry satisfies its declared datum and tolerance scheme"
+kind = "conforms"
+
+[[rubric]]
+id = "bounds"
+description = "the finished envelope remains 100 x 60 x 12 mm"
+kind = "bounds_mm"
+expected = [100.0, 60.0, 12.0]
+tolerance = 0.01
+
+[[rubric]]
+id = "volume"
+description = "stock less four M6 clearance holes and the central locating bore"
+kind = "volume_mm3"
+expected = 66587.9155
+tolerance = 0.05
+derivation = "100*60*12 - 4*pi*(6.6/2)^2*12 - pi*(20/2)^2*12 = 66587.9155 mm^3."
+
+[[rubric]]
+id = "true-surfaces"
+description = "five bores remain analytic cylinders in STEP"
+kind = "true_surfaces"
+min_cylinders = 10
+derivation = "Five through bores; the document circle convention exports each full cylindrical wall as two analytic half-cylinder faces."
+
+[[rubric]]
+id = "review"
+description = "hole margins, datum choice, and proportions read as a deliberate mounting plate"
+kind = "subjective"

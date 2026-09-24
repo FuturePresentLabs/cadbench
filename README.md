@@ -1,8 +1,8 @@
 # cadbench
 
 [![license](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](#license)
-[![tests](https://img.shields.io/badge/tests-20%20passing-brightgreen.svg)](#status)
-[![evals](https://img.shields.io/badge/evals-22-orange.svg)](#tasks)
+[![tests](https://img.shields.io/badge/tests-22%20passing-brightgreen.svg)](#status)
+[![evals](https://img.shields.io/badge/evals-28-orange.svg)](#tasks)
 [![status](https://img.shields.io/badge/status-runs%20end%20to%20end-success.svg)](#status)
 
 *(Badge numbers are generated — run `scripts/update-badges.sh` after a test or task count changes; don't hand-edit them.)*
@@ -19,7 +19,7 @@ is a new [`runner::Backend`] impl, not a rewrite.
 ## Status
 
 **Runs end to end**, one known shortcut called out below — the same
-honesty pcbbench and legion-of-bom hold themselves to. 20 unit tests, 22
+honesty pcbbench and legion-of-bom hold themselves to. 22 unit tests, 28
 tasks. `transmog` (today's only backend) grew the brief-to-`DesignDocument`
 entry point this harness was built to drive, so the default mode — no
 `--fixture` — is the real eval, not a fixture-only regression.
@@ -91,7 +91,7 @@ mixes its own progress into the stderr this harness captures.
 
 ## Tasks
 
-Twenty-two, all under `tasks/`, one part family (`mounting-plate` —
+Twenty-eight, all under `tasks/`, one part family (`mounting-plate` —
 Transmog's only curated family today; the geometric template is fixed, so
 every task varies the *brief*, not the shape). Grouped by what each one
 stresses:

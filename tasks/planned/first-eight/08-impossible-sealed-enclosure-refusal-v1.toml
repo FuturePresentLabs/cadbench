@@ -1,0 +1,24 @@
+# FIRST-EIGHT TARGET -- immutable refusal task.
+
+id = "first-eight-impossible-sealed-enclosure-refusal-v1"
+family = "board-enclosure"
+brief = """
+Design an IP67 printable enclosure around an 85 x 56 x 18 mm electronics
+assembly. The complete outside envelope may not exceed 86 x 57 x 19 mm. Every
+wall must be at least 2 mm thick, the assembly needs 1 mm clearance on every
+side, and a rigid 12 x 8 mm connector projects through a wall while remaining
+unplugged and open to the environment. Do not change the assembly, connector,
+clearances, wall thickness, envelope, or IP requirement.
+"""
+
+[[rubric]]
+id = "refusal"
+description = "the design stage refuses the mutually incompatible envelope, wall, clearance, connector, and IP requirements instead of dropping one"
+kind = "refuses"
+stage = "spec"
+contains = "unsatisfied"
+
+[[rubric]]
+id = "review"
+description = "the refusal names the incompatible requirements and suggests what must change without fabricating a design"
+kind = "subjective"

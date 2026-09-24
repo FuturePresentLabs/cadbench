@@ -1,0 +1,48 @@
+# FIRST-EIGHT TARGET -- immutable task specification.
+
+id = "first-eight-sensor-cover-v1"
+family = "sensor-cover"
+brief = """
+Design a two-part PETG cover for a 70 x 40 x 12 mm sensor module. The assembled
+outside envelope is 90 x 60 x 18 mm. The cover needs a continuous 3 mm wide
+gasket land around the module, four corner M3 screws outside that land, a
+12 x 6 mm cable exit through one short wall, and enough internal clearance to
+lower the module straight into the base. The lid must be removable without
+disturbing the cable. Use printable wall thicknesses and keep screw seats out of
+the rounded outside corners.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every bounded design decision cleared the shared confidence bar"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "mating geometry, screw alignment, and declared gasket geometry conform"
+kind = "conforms"
+
+[[rubric]]
+id = "bounds"
+description = "the assembled cover remains inside 90 x 60 x 18 mm"
+kind = "bounds_mm"
+expected = [90.0, 60.0, 18.0]
+tolerance = 0.05
+
+[[rubric]]
+id = "true-surfaces"
+description = "the four aligned screw passages remain analytic cylinders"
+kind = "true_surfaces"
+min_cylinders = 8
+derivation = "Four screw passages, each expected as two analytic half-cylinder faces; bosses may add additional cylindrical surfaces."
+
+[[rubric]]
+id = "review"
+description = "gasket continuity, cable serviceability, screw seats, and printable proportions are credible"
+kind = "subjective"

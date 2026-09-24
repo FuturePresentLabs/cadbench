@@ -1,0 +1,54 @@
+# FIRST-EIGHT TARGET -- immutable task specification.
+
+id = "first-eight-pocketed-electronics-base-v1"
+family = "pocketed-base-plate"
+brief = """
+Machine a 120 x 80 x 15 mm 6061-T6 electronics base plate. Remove an 80 x
+40 mm rectangular pocket, 10 mm deep, centred in the top face for weight
+relief. Put four M6 normal-clearance through holes on a 100 x 60 mm rectangular
+pattern centred on the plate. The unpocketed perimeter is the mounting land;
+keep the pocket and holes clear of one another and leave a continuous floor.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every bounded design decision cleared the shared confidence bar"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the geometry satisfies its own dimensions and datum scheme"
+kind = "conforms"
+
+[[rubric]]
+id = "bounds"
+description = "the finished envelope remains 120 x 80 x 15 mm"
+kind = "bounds_mm"
+expected = [120.0, 80.0, 15.0]
+tolerance = 0.01
+
+[[rubric]]
+id = "volume"
+description = "stock less the rectangular pocket and four through holes"
+kind = "volume_mm3"
+expected = 109947.2834
+tolerance = 0.05
+derivation = "120*80*15 - 80*40*10 - 4*pi*(6.6/2)^2*15 = 109947.2834 mm^3."
+
+[[rubric]]
+id = "true-surfaces"
+description = "the four mounting holes remain analytic cylinders"
+kind = "true_surfaces"
+min_cylinders = 8
+derivation = "Four through holes, each represented by two analytic half-cylinder faces under the document circle convention."
+
+[[rubric]]
+id = "review"
+description = "edge margins, pocket placement, access, and remaining load path look intentional"
+kind = "subjective"

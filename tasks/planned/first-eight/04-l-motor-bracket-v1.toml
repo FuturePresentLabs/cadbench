@@ -1,0 +1,48 @@
+# FIRST-EIGHT TARGET -- immutable task specification.
+
+id = "first-eight-l-motor-bracket-v1"
+family = "l-motor-bracket"
+brief = """
+Design a 6061-T6 right-angle bracket for a NEMA 23 stepper motor. The motor
+face is 150 mm wide by 120 mm high; the wall face reaches 100 mm back, and both
+legs are 8 mm thick. Put the standard four M5 motor holes on a 47.14 mm square
+pattern around a 38.1 mm pilot opening. Put four vertical adjustment slots in
+the wall leg for M8 fasteners. Add a gusset along the inside corner so belt load
+from the motor is carried into the wall face rather than only bending the 8 mm
+corner. Keep tools and fastener heads accessible from the open side.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every bounded design decision cleared the shared confidence bar"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the two legs, patterns, and declared perpendicularity controls conform"
+kind = "conforms"
+
+[[rubric]]
+id = "bounds"
+description = "the bracket fits the stated 150 x 100 x 120 mm envelope"
+kind = "bounds_mm"
+expected = [150.0, 100.0, 120.0]
+tolerance = 0.05
+
+[[rubric]]
+id = "true-surfaces"
+description = "motor pilot and bolt holes remain analytic cylinders"
+kind = "true_surfaces"
+min_cylinders = 10
+derivation = "One pilot plus four motor holes, each expected as two analytic half-cylinder faces; the four slots may add additional cylindrical ends."
+
+[[rubric]]
+id = "review"
+description = "gusset placement, load path, access, and proportions read as a structural bracket"
+kind = "subjective"

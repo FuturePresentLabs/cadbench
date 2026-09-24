@@ -1,0 +1,50 @@
+# FIRST-EIGHT TARGET -- immutable task specification.
+
+id = "first-eight-vented-pi4-enclosure-v1"
+family = "board-enclosure"
+brief = """
+Design a printable two-part PETG enclosure for a Raspberry Pi 4 using the
+official board outline, mounting-hole, connector, and keepout datums supplied
+by the backend. Keep the assembled envelope within 100 x 72 x 30 mm. The board
+must insert without flexing, all connectors must remain usable, the lid must be
+removable, and the board must be positively retained. Provide a real passive
+airflow path with low inlet and high outlet area rather than decorative slots
+flat over the board. Report achieved ingress honestly; ventilation means this
+is not a sealed enclosure. Do not prescribe the part split, fastener size, or
+vent pattern unless the constraints force one.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every bounded design decision cleared the shared confidence bar"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "board clearance, insertion, fastening, thermal, and ingress claims are checked"
+kind = "conforms"
+
+[[rubric]]
+id = "bounds"
+description = "the assembly fits the maximum 100 x 72 x 30 mm envelope"
+kind = "bounds_mm"
+expected = [100.0, 72.0, 30.0]
+tolerance = 0.05
+
+[[rubric]]
+id = "true-surfaces"
+description = "at least the four mounting passages remain analytic cylinders"
+kind = "true_surfaces"
+min_cylinders = 8
+derivation = "Four aligned board-retention screw passages, each expected as two analytic half-cylinder faces; the chosen fastener and vent concepts may add more."
+
+[[rubric]]
+id = "review"
+description = "part split, port walls, screw seats, vent placement, airflow path, and serviceability are credible"
+kind = "subjective"

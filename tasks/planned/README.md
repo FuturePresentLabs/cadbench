@@ -30,3 +30,23 @@ Current planned families:
   or bracket-l's box-or-angle-plus-features approach, and likely needs its
   own generation strategy on the backend rather than just a new curated
   shape in the existing generator.
+
+## First-eight suite
+
+`first-eight/` is the evaluation-first target suite specified by transmog's
+`docs/OODA_DESIGN_LOOP.md`. These are immutable task contracts, deliberately
+authored before the family-neutral OODA/IR loop exists:
+
+1. four-hole mounting plate;
+2. pocketed electronics base plate;
+3. stepped shaft;
+4. L motor bracket;
+5. flanged bearing block;
+6. sensor cover;
+7. vented Raspberry Pi 4 enclosure;
+8. an impossible sealed enclosure that must be refused.
+
+They remain under `planned/` until a baseline run has been recorded and the
+runner can route their family through the appropriate design entry point.
+Moving a task into `tasks/` is promotion of an existing contract, not an
+opportunity to change its brief or weaken its checks after seeing a result.

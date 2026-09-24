@@ -1,0 +1,48 @@
+# FIRST-EIGHT TARGET -- immutable task specification.
+
+id = "first-eight-stepped-shaft-v1"
+family = "stepped-shaft"
+brief = """
+Turn an 85 mm long shaft from 303 stainless. From the datum end it has a 20 mm
+diameter bearing seat 40 mm long, a 16 mm diameter shoulder section 20 mm long,
+and a 12 mm diameter nose 25 mm long. Cut an M12 x 1.75 external thread over the
+last 18 mm of the nose. Provide a standard relief at the shoulder before the
+threaded nose and 0.5 x 45 degree lead-in chamfers. The bearing seat and thread
+must share one axis; declare a runout or coaxiality control rather than merely
+drawing concentric cylinders.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every bounded design decision cleared the shared confidence bar"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the shaft satisfies its declared size and coaxiality controls"
+kind = "conforms"
+
+[[rubric]]
+id = "bounds"
+description = "the shaft is 85 mm long with a 20 mm maximum diameter"
+kind = "bounds_mm"
+expected = [85.0, 20.0, 20.0]
+tolerance = 0.05
+
+[[rubric]]
+id = "true-surfaces"
+description = "the three turned diameters remain analytic cylindrical surfaces"
+kind = "true_surfaces"
+min_cylinders = 3
+derivation = "The 20, 16, and 12 mm coaxial turned sections each contribute at least one analytic cylindrical face; grooves and thread representation may add more."
+
+[[rubric]]
+id = "review"
+description = "shoulders, relief, thread runout, and assembly lead-ins look like a turnable shaft"
+kind = "subjective"

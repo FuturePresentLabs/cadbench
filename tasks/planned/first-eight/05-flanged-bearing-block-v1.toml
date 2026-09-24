@@ -1,0 +1,47 @@
+# FIRST-EIGHT TARGET -- immutable task specification.
+
+id = "first-eight-flanged-bearing-block-v1"
+family = "flanged-bearing-block"
+brief = """
+Machine a compact 6061-T6 flanged bearing block inside a 100 x 60 x 50 mm
+envelope. Its base flange is 100 x 60 x 12 mm. Centre a 52 mm outside-diameter
+bearing boss on the flange, rising to the full 50 mm height, with a 30 mm
+through bore sharing its axis. Put four M8 normal-clearance through holes on an
+80 x 40 mm rectangular mounting pattern. The flange bottom is datum A; the bore
+axis locates the bearing and must be perpendicular to A.
+"""
+
+[[rubric]]
+id = "stages"
+description = "every pipeline stage exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every bounded design decision cleared the shared confidence bar"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the bore, boss, pattern, and datum controls conform"
+kind = "conforms"
+
+[[rubric]]
+id = "bounds"
+description = "the block occupies the stated 100 x 60 x 50 mm envelope"
+kind = "bounds_mm"
+expected = [100.0, 60.0, 50.0]
+tolerance = 0.05
+
+[[rubric]]
+id = "true-surfaces"
+description = "bearing boss, bearing bore, and four mounting holes are analytic"
+kind = "true_surfaces"
+min_cylinders = 12
+derivation = "Six cylindrical features: boss, central bore, and four mounting holes; the document circle convention commonly emits two analytic half-cylinder faces per feature."
+
+[[rubric]]
+id = "review"
+description = "bearing support, flange proportions, tool access, and load path look intentional"
+kind = "subjective"

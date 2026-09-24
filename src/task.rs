@@ -388,4 +388,60 @@ kind = "vibes_check"
         let err = toml::from_str::<Task>(text).expect_err("unknown kind refused");
         assert!(err.to_string().contains("vibes_check"), "{err}");
     }
+
+    /// The evaluation-first suite is a contract written before its backend.
+    /// Keep it parseable, complete, and objectively checkable while it lives
+    /// under `planned/`; promotion into `tasks/` must not be the first time
+    /// the harness reads these files.
+    #[test]
+    fn the_planned_first_eight_are_complete_eval_contracts() {
+        let dir = Path::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tasks/planned/first-eight"
+        ));
+        let mut paths: Vec<_> = std::fs::read_dir(dir)
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("toml"))
+            .collect();
+        paths.sort();
+        assert_eq!(
+            paths.len(),
+            8,
+            "the first-eight suite is deliberately fixed"
+        );
+
+        let mut ids = std::collections::BTreeSet::new();
+        for path in paths {
+            let task = load(&path).unwrap_or_else(|error| panic!("{}: {error}", path.display()));
+            assert!(ids.insert(task.id.clone()), "duplicate task id {}", task.id);
+            assert!(
+                task.id.starts_with("first-eight-"),
+                "{} is not visibly part of the suite",
+                task.id
+            );
+
+            let subjective = task
+                .rubric
+                .iter()
+                .filter(|criterion| matches!(criterion.check, Check::Subjective))
+                .count();
+            assert_eq!(subjective, 1, "{} needs exactly one human review", task.id);
+
+            let objective_geometry = task.rubric.iter().any(|criterion| {
+                matches!(
+                    criterion.check,
+                    Check::VolumeMm3 { .. }
+                        | Check::BoundsMm { .. }
+                        | Check::TrueSurfaces { .. }
+                        | Check::Refuses { .. }
+                )
+            });
+            assert!(
+                objective_geometry,
+                "{} needs a numeric geometry check or an explicit refusal",
+                task.id
+            );
+        }
+    }
 }
