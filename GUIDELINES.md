@@ -36,6 +36,11 @@ be ones whose honest answer is "this cannot be made as asked": text in a
 drawing, a slot narrower than the jet. Without them, a backend that quietly
 substitutes something makeable scores the same as one that refuses.
 
+**G7. Validation tasks carry governance metadata.** New validation and
+holdout tasks declare capability tags, difficulty, provenance, oracle
+version, split, and expected failure modes. This makes macro-averaging and
+dataset review possible without inferring categories from filenames.
+
 ## Review rules
 
 - **Headline numbers are live.** Report `--live` runs, repeated. A task
@@ -49,6 +54,9 @@ substitutes something makeable scores the same as one that refuses.
   description.
 - **Fixtures are inputs, checked in.** Never generate a fixture with the
   backend you are grading.
+- **Metamorphic cases name their relation.** A paraphrase keeps every
+  objective expectation fixed. A one-constraint perturbation states which
+  expectations change and pins the ones that must remain invariant.
 - **A real part beats a synthetic one.** When a task models something that
   exists (a board, a case), take its datums from the maker's published
   mechanical drawing or design files, and cite the source in the task.

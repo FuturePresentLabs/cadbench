@@ -7,4 +7,5 @@
 pub mod lua_check;
 pub mod runner;
 pub mod scorer;
+mod step_oracle;
 pub mod task;

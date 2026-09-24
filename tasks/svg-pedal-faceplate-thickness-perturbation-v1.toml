@@ -1,0 +1,65 @@
+id = "svg-pedal-faceplate-thickness-perturbation-v1"
+family = "svg-part"
+brief = """
+A faceplate for a guitar effects pedal, waterjet cut from 4 mm aluminium
+sheet: holes for three potentiometers, a footswitch, a status LED, and four
+corner mounting screws. Every hole goes straight through the sheet.
+"""
+
+[metadata]
+capabilities = ["single-constraint-perturbation", "through-features", "step-geometry", "waterjet"]
+difficulty = "intermediate"
+source = "Thickness perturbation of svg-pedal-faceplate-v1"
+oracle_version = "cadbench-svg-hand-derived-v1"
+split = "validation"
+expected_failure_modes = ["ignored-thickness", "unrelated-geometry-drift", "faceted-step"]
+
+[input]
+svg = "../fixtures/shapes/pedal-faceplate.svg"
+height_mm = 4.0
+material = "5052-H32"
+
+[[rubric]]
+id = "stages"
+description = "every stage exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every decision the model made cleared the shared 0.7 bar"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the build completed"
+kind = "conforms"
+
+[[rubric]]
+id = "holes-through"
+description = "every hole goes through"
+kind = "decision"
+key = "holes_*"
+one_of = ["through"]
+
+[[rubric]]
+id = "volume"
+description = "only the perturbed thickness changes volume"
+kind = "volume_mm3"
+expected = 27589.1152
+tolerance = 0.05
+derivation = "Unchanged outline net area 6897.2788 mm^2 x perturbed 4 mm thickness = 27589.1152 mm^3."
+
+[[rubric]]
+id = "bounds"
+description = "X/Y remain invariant and only Z changes from 3 to 4 mm"
+kind = "bounds_mm"
+expected = [120.0, 60.0, 4.0]
+tolerance = 0.01
+
+[[rubric]]
+id = "true-surfaces"
+description = "the STEP artifact contains the same true cylindrical topology"
+kind = "true_surfaces"
+min_cylinders = 22
+derivation = "Thickness does not change topology: 9 holes x 2 faces + 4 outline corners = 22."

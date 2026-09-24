@@ -70,6 +70,9 @@ STEP, cut plan and the decisions the brief settles.
 # The real eval: the backend designs the part from the task's brief.
 cargo run -- tasks/mounting-plate-v1.toml --repo /path/to/transmog
 
+# Run every promoted task through eval's shared suite runner.
+cargo run -- --all --tasks-dir tasks --repo /path/to/transmog --out cadbench-results
+
 # ...with the design stage calling the real decision gateway. Needs
 # BIFROST_API_KEY in the environment; off by default, because a benchmark
 # that reaches the network unasked produces numbers nobody can reproduce.
@@ -84,6 +87,11 @@ cargo run -- tasks/mounting-plate-v1.toml \
 Prints the scored rubric as JSON. Exits non-zero if any *automated*
 criterion failed — `Verdict::NeedsHuman` (the `subjective` checks) never
 fails the run; it's reported separately as still needing a person.
+
+`--all` gives every task an isolated child of `--out`, continues after an
+individual backend error, and writes the shared `eval.suite-report.v1`
+aggregate to `suite-report.json`. Nested `tasks/planned/` contracts are not
+run until they are promoted.
 
 Pass `--binary /path/to/transmog` instead of relying on `cargo run
 --release` under the hood if you already have one built — a cargo build

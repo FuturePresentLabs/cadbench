@@ -1,0 +1,66 @@
+id = "svg-pedal-faceplate-paraphrase-v1"
+family = "svg-part"
+brief = """
+Make a 3 mm aluminium front panel for a guitar stompbox from the supplied
+drawing. It will be waterjet cut. The three pot openings, footswitch opening,
+LED opening, and four fixing holes must all pass completely through the panel.
+"""
+
+[metadata]
+capabilities = ["instruction-paraphrase", "through-features", "step-geometry", "waterjet"]
+difficulty = "intermediate"
+source = "Metamorphic paraphrase of svg-pedal-faceplate-v1"
+oracle_version = "cadbench-svg-hand-derived-v1"
+split = "validation"
+expected_failure_modes = ["paraphrase-instability", "blind-hole-substitution", "faceted-step"]
+
+[input]
+svg = "../fixtures/shapes/pedal-faceplate.svg"
+height_mm = 3.0
+material = "5052-H32"
+
+[[rubric]]
+id = "stages"
+description = "every stage exited 0"
+kind = "stages_pass"
+
+[[rubric]]
+id = "confidence"
+description = "every decision the model made cleared the shared 0.7 bar"
+kind = "min_decision_confidence"
+threshold = 0.7
+
+[[rubric]]
+id = "conforms"
+description = "the build completed"
+kind = "conforms"
+
+[[rubric]]
+id = "holes-through"
+description = "every hole goes through"
+kind = "decision"
+key = "holes_*"
+one_of = ["through"]
+
+[[rubric]]
+id = "volume"
+description = "the plate's volume remains invariant under a prompt paraphrase"
+kind = "volume_mm3"
+expected = 20691.8364
+tolerance = 0.05
+derivation = "Outline net area 6897.2788 mm^2 (derived in svg-pedal-faceplate-v1) x 3 mm = 20691.8364 mm^3."
+
+[[rubric]]
+id = "bounds"
+description = "the envelope remains invariant under a prompt paraphrase"
+kind = "bounds_mm"
+expected = [120.0, 60.0, 3.0]
+tolerance = 0.01
+
+[[rubric]]
+id = "true-surfaces"
+description = "the STEP artifact contains the expected true cylindrical surfaces"
+kind = "true_surfaces"
+min_cylinders = 22
+derivation = "9 holes x 2 faces (a full circle is split in two) + 4 outline corners = 22."
+

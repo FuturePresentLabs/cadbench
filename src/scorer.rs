@@ -42,12 +42,14 @@ fn verdict_for(check: &Check, outcome: &RunOutcome) -> Verdict {
             }
         }
         Check::MinDecisionConfidence { threshold } => {
-            // No decisions recorded is not a vacuous pass: a run that made no
-            // typed decisions at all did not exercise what this criterion
-            // exists to check, so it fails rather than trivially clearing it.
             if outcome.decisions.is_empty() {
                 Verdict::Fail
-            } else if outcome.decisions.iter().all(|d| d.confidence >= *threshold) {
+            } else if model_decisions(outcome).next().is_none() {
+                // Recorded/default mode exercised the deterministic path, not
+                // a model. Its objective decisions remain scoreable, but a
+                // model-confidence claim is genuinely unresolved.
+                Verdict::NeedsHuman
+            } else if model_decisions(outcome).all(|d| d.confidence >= *threshold) {
                 Verdict::Pass
             } else {
                 Verdict::Fail
@@ -57,6 +59,13 @@ fn verdict_for(check: &Check, outcome: &RunOutcome) -> Verdict {
         Check::Subjective => Verdict::NeedsHuman,
         strict => judge(strict, outcome).0,
     }
+}
+
+fn model_decisions(outcome: &RunOutcome) -> impl Iterator<Item = &crate::runner::DecisionRecord> {
+    outcome
+        .decisions
+        .iter()
+        .filter(|decision| matches!(decision.kind.as_str(), "choice" | "score" | "noul"))
 }
 
 /// The verdict and its detail for the checks that measure the result rather
@@ -134,10 +143,12 @@ fn judge(check: &Check, outcome: &RunOutcome) -> (Verdict, String) {
         Check::TrueSurfaces { min_cylinders, .. } => match &outcome.step {
             None => no_step(),
             Some(r) => pass(
-                r.writer == "occt-brep" && r.surfaces.cylinder >= *min_cylinders,
+                r.writer == "occt-brep"
+                    && r.artifact_cylinders
+                        .is_some_and(|count| count >= *min_cylinders),
                 format!(
-                    "writer {}, {} cylindrical face(s) vs at least {min_cylinders}",
-                    r.writer, r.surfaces.cylinder
+                    "writer {}; artifact has {:?} cylindrical face(s) vs at least {min_cylinders} (backend reported {})",
+                    r.writer, r.artifact_cylinders, r.surfaces.cylinder
                 ),
             ),
         },
@@ -267,15 +278,22 @@ fn detail_for(check: &Check, outcome: &RunOutcome) -> String {
             if outcome.decisions.is_empty() {
                 "no decisions recorded".to_owned()
             } else {
-                let worst = outcome
-                    .decisions
-                    .iter()
-                    .map(|d| d.confidence)
-                    .fold(f64::INFINITY, f64::min);
-                format!(
-                    "{} decision(s), worst confidence {worst:.2} vs threshold {threshold:.2}",
-                    outcome.decisions.len()
-                )
+                let model = model_decisions(outcome).collect::<Vec<_>>();
+                if model.is_empty() {
+                    format!(
+                        "no model-authored decisions; {} deterministic default/derived record(s)",
+                        outcome.decisions.len()
+                    )
+                } else {
+                    let worst = model
+                        .iter()
+                        .map(|decision| decision.confidence)
+                        .fold(f64::INFINITY, f64::min);
+                    format!(
+                        "{} model decision(s), worst confidence {worst:.2} vs threshold {threshold:.2}",
+                        model.len()
+                    )
+                }
             }
         }
         Check::Conforms => match &outcome.build {
@@ -298,7 +316,7 @@ fn detail_for(check: &Check, outcome: &RunOutcome) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::runner::{BuildStatus, DecisionRecord, StageRun};
+    use crate::runner::{BuildStatus, DecisionRecord, StageRun, StepReport, StepSurfaces};
     use crate::task::Criterion;
     use std::path::PathBuf;
 
@@ -307,6 +325,7 @@ mod tests {
             id: "t".into(),
             family: "f".into(),
             brief: "b".into(),
+            metadata: eval::TaskMetadata::default(),
             input: None,
             rubric,
         }
@@ -368,6 +387,31 @@ mod tests {
     }
 
     #[test]
+    fn backend_surface_claim_cannot_pass_without_artifact_evidence() {
+        let task = task_with(vec![Criterion {
+            id: "surfaces".into(),
+            description: "d".into(),
+            check: Check::TrueSurfaces {
+                min_cylinders: 1,
+                derivation: "one hole".into(),
+            },
+        }]);
+        let mut outcome = base_outcome();
+        outcome.step = Some(StepReport {
+            schema: crate::runner::STEP_REPORT_SCHEMA.into(),
+            writer: "occt-brep".into(),
+            volume_mm3: 1.0,
+            bounds_mm: Some([1.0, 1.0, 1.0]),
+            surfaces: StepSurfaces { cylinder: 99 },
+            artifact_cylinders: Some(0),
+        });
+
+        let report = score(&task, &outcome);
+        assert_eq!(report.results[0].verdict, Verdict::Fail);
+        assert!(report.results[0].detail.contains("backend reported 99"));
+    }
+
+    #[test]
     fn confidence_fails_on_no_decisions_not_a_vacuous_pass() {
         let task = task_with(vec![Criterion {
             id: "conf".into(),
@@ -420,6 +464,60 @@ mod tests {
         }];
         let report = score(&task, &outcome);
         assert_eq!(report.results[0].verdict, Verdict::Pass);
+    }
+
+    #[test]
+    fn deterministic_defaults_are_not_fictional_model_confidence() {
+        let task = task_with(vec![Criterion {
+            id: "conf".into(),
+            description: "d".into(),
+            check: Check::MinDecisionConfidence { threshold: 0.7 },
+        }]);
+        let mut outcome = base_outcome();
+        outcome.decisions = vec![DecisionRecord {
+            key: "body".into(),
+            kind: "default".into(),
+            chosen: "solid".into(),
+            confidence: 0.0,
+        }];
+        let report = score(&task, &outcome);
+        assert_eq!(report.results[0].verdict, Verdict::NeedsHuman);
+        assert!(report.results[0]
+            .detail
+            .contains("no model-authored decisions"));
+    }
+
+    #[test]
+    fn derived_and_default_records_do_not_lower_real_model_confidence() {
+        let task = task_with(vec![Criterion {
+            id: "conf".into(),
+            description: "d".into(),
+            check: Check::MinDecisionConfidence { threshold: 0.7 },
+        }]);
+        let mut outcome = base_outcome();
+        outcome.decisions = vec![
+            DecisionRecord {
+                key: "body".into(),
+                kind: "derived".into(),
+                chosen: "solid".into(),
+                confidence: 1.0,
+            },
+            DecisionRecord {
+                key: "holes".into(),
+                kind: "choice".into(),
+                chosen: "through".into(),
+                confidence: 0.8,
+            },
+            DecisionRecord {
+                key: "cutout".into(),
+                kind: "default".into(),
+                chosen: "through".into(),
+                confidence: 0.0,
+            },
+        ];
+        let report = score(&task, &outcome);
+        assert_eq!(report.results[0].verdict, Verdict::Pass);
+        assert!(report.results[0].detail.contains("1 model decision"));
     }
 
     #[test]

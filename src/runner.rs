@@ -56,6 +56,10 @@ pub enum RunError {
         #[source]
         source: serde_json::Error,
     },
+    /// A produced STEP file is missing, malformed, or not independently
+    /// inspectable. Backend stdout is not accepted as evidence about itself.
+    #[error("inspecting STEP artifact")]
+    StepOracle(#[from] crate::step_oracle::StepOracleError),
     /// The task's `[input]` is not one this harness can hand a backend.
     #[error("task {task}: input")]
     Input {
@@ -146,6 +150,9 @@ pub struct StepReport {
     pub volume_mm3: f64,
     pub bounds_mm: Option<[f64; 3]>,
     pub surfaces: StepSurfaces,
+    /// Surface count read from `part.step`, independently of this report.
+    #[serde(skip)]
+    pub artifact_cylinders: Option<u32>,
 }
 
 /// Surface counts in a STEP export.
@@ -468,6 +475,10 @@ impl Backend<Check> for TransmogBackend {
                 ],
             )?;
             step = report(&run, STEP_REPORT_SCHEMA, |r: &StepReport| &r.schema)?;
+            if let Some(report) = &mut step {
+                let facts = crate::step_oracle::inspect(&workdir.join("part.step"))?;
+                report.artifact_cylinders = Some(facts.cylindrical_surfaces);
+            }
             stages.push(run);
         }
         let mut cut = None;
@@ -635,6 +646,7 @@ mod tests {
             id: "t".to_owned(),
             family: "mounting-plate".to_owned(),
             brief: "A plate with a boss.".to_owned(),
+            metadata: eval::TaskMetadata::default(),
             input: None,
             rubric: Vec::new(),
         }

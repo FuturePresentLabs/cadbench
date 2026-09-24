@@ -7,15 +7,25 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+use anyhow::{Context as _, Result};
 use cadbench::runner::{Backend, DesignSource, RunError, TransmogBackend};
 use cadbench::scorer::score;
 use clap::Parser;
+use eval::ScoreReport;
 
 #[derive(Parser)]
 #[command(about = "Eval harness for typed-decision-driven CAD design agents")]
 struct Args {
     /// Path to a task TOML file, e.g. tasks/mounting-plate-v1.toml.
-    task: PathBuf,
+    task: Option<PathBuf>,
+
+    /// Run every promoted `.toml` task directly under `--tasks-dir`.
+    #[arg(long, conflicts_with = "task")]
+    all: bool,
+
+    /// Promoted task directory used by `--all`; nested planned tasks are skipped.
+    #[arg(long, default_value = "tasks")]
+    tasks_dir: PathBuf,
 
     /// Path to a transmog checkout (the directory holding its workspace Cargo.toml).
     #[arg(long)]
@@ -48,37 +58,73 @@ struct Args {
 fn main() -> ExitCode {
     let args = Args::parse();
 
-    let task = match cadbench::task::load(&args.task) {
-        Ok(task) => task,
+    if args.all {
+        return run_suite(&args);
+    }
+    let Some(task) = args.task.as_deref() else {
+        eprintln!("error: provide a task TOML or pass --all");
+        return ExitCode::FAILURE;
+    };
+
+    match run_one(task, &args.out, &args) {
+        Ok(report) => {
+            print_report(&report);
+            if report.all_automated_pass() {
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::FAILURE
+            }
+        }
+        Err(error) => {
+            eprintln!("error: {error:#}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn run_suite(args: &Args) -> ExitCode {
+    let suite = eval::run_all(&args.tasks_dir, &args.out, |task, workdir| {
+        run_one(task, workdir, args)
+    });
+    let report = match suite {
+        Ok(report) => report,
         Err(error) => {
             eprintln!("error: {error}");
-            let mut source = std::error::Error::source(&error);
-            while let Some(cause) = source {
-                eprintln!("  caused by: {cause}");
-                source = cause.source();
-            }
             return ExitCode::FAILURE;
         }
     };
+    println!(
+        "cadbench suite: {}/{} passed; {} failed; {} harness error(s); {} need human review",
+        report.passed, report.total, report.failed, report.errors, report.needs_human
+    );
+    println!("report -> {}", args.out.join("suite-report.json").display());
+    if report.all_automated_pass() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    }
+}
 
-    let design = match args.fixture {
-        Some(path) => DesignSource::Fixture(path),
+fn run_one(task_path: &std::path::Path, out: &std::path::Path, args: &Args) -> Result<ScoreReport> {
+    let task = cadbench::task::load(task_path)
+        .with_context(|| format!("loading {}", task_path.display()))?;
+
+    let design = match &args.fixture {
+        Some(path) => DesignSource::Fixture(path.clone()),
         None => DesignSource::Brief,
     };
-    let mut backend = TransmogBackend::new(args.repo, design).live(args.live);
-    if let Some(binary) = args.binary {
+    let mut backend = TransmogBackend::new(&args.repo, design).live(args.live);
+    if let Some(binary) = &args.binary {
         backend = backend.with_binary(binary);
     }
 
-    let outcome = match backend.run(&task, &args.out) {
-        Ok(outcome) => outcome,
-        Err(error) => {
-            report_run_error(&error);
-            return ExitCode::FAILURE;
-        }
-    };
+    let outcome = backend
+        .run(&task, out)
+        .map_err(|error| anyhow::anyhow!(run_error_text(&error)))?;
+    Ok(score(&task, &outcome))
+}
 
-    let report = score(&task, &outcome);
+fn print_report(report: &ScoreReport) {
     println!(
         "{}",
         serde_json::to_string_pretty(&report).expect("ScoreReport always serializes")
@@ -90,17 +136,13 @@ fn main() -> ExitCode {
             report.needs_human().join(", ")
         );
     }
-
-    if report.all_automated_pass() {
-        ExitCode::SUCCESS
-    } else {
-        ExitCode::FAILURE
-    }
 }
 
-fn report_run_error(error: &RunError) {
-    eprintln!("error: {error}");
+fn run_error_text(error: &RunError) -> String {
+    let mut text = error.to_string();
     if let RunError::CapabilityMissing { detail, .. } = error {
-        eprintln!("{detail}");
+        text.push_str(": ");
+        text.push_str(detail);
     }
+    text
 }

@@ -213,6 +213,7 @@ mod tests {
             id: "mounting-plate-v1".into(),
             family: "mounting-plate".into(),
             brief: "6061-T6 mounting plate, central boss, located bore".into(),
+            metadata: eval::TaskMetadata::default(),
             input: None,
             rubric: vec![
                 Criterion {
