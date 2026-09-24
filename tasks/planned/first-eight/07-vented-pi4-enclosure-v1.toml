@@ -5,7 +5,7 @@ family = "board-enclosure"
 brief = """
 Design a printable two-part PETG enclosure for a Raspberry Pi 4 using the
 official board outline, mounting-hole, connector, and keepout datums supplied
-by the backend. Keep the assembled envelope within 100 x 72 x 30 mm. The board
+by the backend. The assembled outside envelope is 100 x 72 x 30 mm. The board
 must insert without flexing, all connectors must remain usable, the lid must be
 removable, and the board must be positively retained. Provide a real passive
 airflow path with low inlet and high outlet area rather than decorative slots
@@ -32,7 +32,7 @@ kind = "conforms"
 
 [[rubric]]
 id = "bounds"
-description = "the assembly fits the maximum 100 x 72 x 30 mm envelope"
+description = "the assembly occupies the specified 100 x 72 x 30 mm envelope"
 kind = "bounds_mm"
 expected = [100.0, 72.0, 30.0]
 tolerance = 0.05
