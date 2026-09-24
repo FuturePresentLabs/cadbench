@@ -64,14 +64,23 @@ fn verdict_for(check: &Check, outcome: &RunOutcome) -> Verdict {
 fn judge(check: &Check, outcome: &RunOutcome) -> (Verdict, String) {
     let pass = |ok: bool, detail: String| (if ok { Verdict::Pass } else { Verdict::Fail }, detail);
     let within = |got: f64, want: f64, tol: f64| (got - want).abs() <= tol;
-    let no_step = || (Verdict::Fail, "no STEP report: the step stage did not run or failed".to_owned());
+    let no_step = || {
+        (
+            Verdict::Fail,
+            "no STEP report: the step stage did not run or failed".to_owned(),
+        )
+    };
     match check {
         Check::Decision { key, one_of } => {
             let matches = |k: &str| match key.strip_suffix('*') {
                 Some(prefix) => k.starts_with(prefix),
                 None => k == key,
             };
-            let hits: Vec<_> = outcome.decisions.iter().filter(|d| matches(&d.key)).collect();
+            let hits: Vec<_> = outcome
+                .decisions
+                .iter()
+                .filter(|d| matches(&d.key))
+                .collect();
             if hits.is_empty() {
                 return (Verdict::Fail, format!("no decision matched {key:?}"));
             }
@@ -81,14 +90,22 @@ fn judge(check: &Check, outcome: &RunOutcome) -> (Verdict, String) {
                 .map(|d| format!("{} = {} ({}, {:.2})", d.key, d.chosen, d.kind, d.confidence))
                 .collect();
             if wrong.is_empty() {
-                let got: Vec<String> = hits.iter().map(|d| format!("{} = {}", d.key, d.chosen)).collect();
+                let got: Vec<String> = hits
+                    .iter()
+                    .map(|d| format!("{} = {}", d.key, d.chosen))
+                    .collect();
                 (Verdict::Pass, got.join(", "))
             } else {
-                (Verdict::Fail, format!("expected one of {one_of:?}; got {}", wrong.join(", ")))
+                (
+                    Verdict::Fail,
+                    format!("expected one of {one_of:?}; got {}", wrong.join(", ")),
+                )
             }
         }
         Check::VolumeMm3 {
-            expected, tolerance, ..
+            expected,
+            tolerance,
+            ..
         } => match &outcome.step {
             None => no_step(),
             Some(r) => pass(
@@ -100,7 +117,10 @@ fn judge(check: &Check, outcome: &RunOutcome) -> (Verdict, String) {
                 ),
             ),
         },
-        Check::BoundsMm { expected, tolerance } => match outcome.step.as_ref().map(|r| r.bounds_mm) {
+        Check::BoundsMm {
+            expected,
+            tolerance,
+        } => match outcome.step.as_ref().map(|r| r.bounds_mm) {
             None => no_step(),
             Some(None) => (Verdict::Fail, "the STEP report has no bounds".to_owned()),
             Some(Some(got)) => pass(
@@ -127,7 +147,10 @@ fn judge(check: &Check, outcome: &RunOutcome) -> (Verdict, String) {
             tolerance_mm,
             ..
         } => match &outcome.cut {
-            None => (Verdict::Fail, "no cut report: the cut stage did not run or refused".to_owned()),
+            None => (
+                Verdict::Fail,
+                "no cut report: the cut stage did not run or refused".to_owned(),
+            ),
             Some(r) => pass(
                 r.pierce_count == *pierces && within(r.cut_length_mm, *length_mm, *tolerance_mm),
                 format!(
@@ -143,20 +166,51 @@ fn judge(check: &Check, outcome: &RunOutcome) -> (Verdict, String) {
             },
             outcome,
         ),
-        Check::Refuses { stage, contains } => match outcome.stages.iter().find(|s| &s.name == stage) {
-            None => (Verdict::Fail, format!("stage {stage:?} never ran")),
-            Some(run) if run.ok() => (Verdict::Fail, format!("stage {stage:?} succeeded: nothing was refused")),
-            Some(run) => pass(
-                run.stderr.contains(contains.as_str()),
-                format!(
-                    "stage {stage:?} exited {:?}; stderr {} {contains:?}: {}",
-                    run.exit_code,
-                    if run.stderr.contains(contains.as_str()) { "says" } else { "does not say" },
-                    run.stderr.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("").trim()
+        Check::Refuses { stage, contains } => {
+            match outcome.stages.iter().find(|s| &s.name == stage) {
+                None => (Verdict::Fail, format!("stage {stage:?} never ran")),
+                Some(run) if run.ok() => (
+                    Verdict::Fail,
+                    format!("stage {stage:?} succeeded: nothing was refused"),
                 ),
+                Some(run) => pass(
+                    run.stderr.contains(contains.as_str()),
+                    format!(
+                        "stage {stage:?} exited {:?}; stderr {} {contains:?}: {}",
+                        run.exit_code,
+                        if run.stderr.contains(contains.as_str()) {
+                            "says"
+                        } else {
+                            "does not say"
+                        },
+                        run.stderr
+                            .lines()
+                            .rev()
+                            .find(|l| !l.trim().is_empty())
+                            .unwrap_or("")
+                            .trim()
+                    ),
+                ),
+            }
+        }
+        Check::Lua { script, expected } => match &outcome.eval_facts {
+            None => (
+                Verdict::Fail,
+                "no eval-facts.json: backend did not emit public assembly facts".to_owned(),
             ),
+            Some(facts) => match crate::lua_check::evaluate(script, expected, facts) {
+                Ok(Ok(detail)) => (Verdict::Pass, detail),
+                Ok(Err(detail)) => (Verdict::Fail, detail),
+                Err(detail) => (
+                    Verdict::Fail,
+                    format!("invalid Lua check contract: {detail}"),
+                ),
+            },
         },
-        Check::StagesPass | Check::MinDecisionConfidence { .. } | Check::Conforms | Check::Subjective => {
+        Check::StagesPass
+        | Check::MinDecisionConfidence { .. }
+        | Check::Conforms
+        | Check::Subjective => {
             unreachable!("judged by verdict_for/detail_for directly")
         }
     }
@@ -192,7 +246,12 @@ fn detail_for(check: &Check, outcome: &RunOutcome) -> String {
                 .iter()
                 .filter(|s| !s.ok())
                 .map(|s| {
-                    let last = s.stderr.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("");
+                    let last = s
+                        .stderr
+                        .lines()
+                        .rev()
+                        .find(|l| !l.trim().is_empty())
+                        .unwrap_or("");
                     format!("{} ({})", s.name, last.trim())
                 })
                 .collect();
@@ -264,6 +323,7 @@ mod tests {
             decisions: vec![],
             step: None,
             cut: None,
+            eval_facts: None,
         }
     }
 

@@ -1,0 +1,23 @@
+{
+  "schema": "cadbench.lua-check-input.v1",
+  "required_roles": [
+    "enclosure_base",
+    "removable_lid",
+    "seal",
+    "protected_component"
+  ],
+  "predicates": [
+    {
+      "kind": "no_clash",
+      "roles": ["protected_component", "enclosure_base"]
+    },
+    {
+      "kind": "insertion_clear",
+      "roles": ["protected_component", "enclosure_base"]
+    },
+    {
+      "kind": "seal_continuous",
+      "roles": ["seal", "enclosure_base", "removable_lid"]
+    }
+  ]
+}

@@ -25,6 +25,7 @@ use std::process::Command;
 
 use serde::{Deserialize, Serialize};
 
+use crate::lua_check::AssemblyFacts;
 use crate::task::{Check, ShapeInput, Task};
 
 /// Failures that stop a run before it can be scored.
@@ -185,6 +186,10 @@ pub struct RunOutcome {
     /// The through-cut plan's report, likewise.
     #[serde(default)]
     pub cut: Option<CutReport>,
+    /// Backend-neutral facts consumed by public Lua checks. This deliberately
+    /// contains no backend implementation details.
+    #[serde(default)]
+    pub eval_facts: Option<AssemblyFacts>,
 }
 
 impl RunOutcome {
@@ -345,6 +350,8 @@ pub const DESIGN_FILE: &str = "design.ron";
 pub const BUILD_STATUS_SCHEMA: &str = "transmog.build.stream.v1";
 /// Decision trace filename the harness looks for in the work directory.
 pub const DECISION_TRACE_FILE: &str = "decisions.json";
+/// Backend-neutral assembly facts filename.
+pub const EVAL_FACTS_FILE: &str = "eval-facts.json";
 
 impl Backend<Check> for TransmogBackend {
     type Outcome = RunOutcome;
@@ -466,7 +473,9 @@ impl Backend<Check> for TransmogBackend {
         let mut cut = None;
         let kerfs: Vec<f64> = checks()
             .filter_map(|c| match c {
-                Check::CutPlan { kerf_mm, .. } | Check::CutRefused { kerf_mm, .. } => Some(*kerf_mm),
+                Check::CutPlan { kerf_mm, .. } | Check::CutRefused { kerf_mm, .. } => {
+                    Some(*kerf_mm)
+                }
                 _ => None,
             })
             .collect();
@@ -501,8 +510,25 @@ impl Backend<Check> for TransmogBackend {
             decisions: read_decision_trace(&workdir.join(DECISION_TRACE_FILE))?,
             step,
             cut,
+            eval_facts: read_eval_facts(&workdir.join(EVAL_FACTS_FILE))?,
         })
     }
+}
+
+/// Reads public assembly facts, or `None` when a backend did not emit them.
+pub fn read_eval_facts(path: &Path) -> Result<Option<AssemblyFacts>, RunError> {
+    if !path.exists() {
+        return Ok(None);
+    }
+    let text = std::fs::read_to_string(path).map_err(|source| RunError::Artifact {
+        path: path.display().to_string(),
+        source,
+    })?;
+    let facts = serde_json::from_str(&text).map_err(|source| RunError::ParseArtifact {
+        path: path.display().to_string(),
+        source,
+    })?;
+    Ok(Some(facts))
 }
 
 /// A stage's JSON report from its stdout, or `None` when the stage failed
@@ -521,10 +547,11 @@ fn report<R: serde::de::DeserializeOwned>(
         return Ok(None);
     }
     let what = format!("{} stdout", run.name);
-    let parsed: R = serde_json::from_str(&run.stdout).map_err(|source| RunError::ParseArtifact {
-        path: what.clone(),
-        source,
-    })?;
+    let parsed: R =
+        serde_json::from_str(&run.stdout).map_err(|source| RunError::ParseArtifact {
+            path: what.clone(),
+            source,
+        })?;
     if schema_of(&parsed) != schema {
         return Err(RunError::CapabilityMissing {
             backend: "transmog".to_owned(),
@@ -641,7 +668,8 @@ mod tests {
             spec.command
         );
         assert!(
-            spec.command.contains(&dir.join(DESIGN_FILE).display().to_string()),
+            spec.command
+                .contains(&dir.join(DESIGN_FILE).display().to_string()),
             "the design must land in the work directory: {}",
             spec.command
         );

@@ -48,3 +48,10 @@ derivation = "Four aligned board-retention screw passages, each expected as two 
 id = "review"
 description = "part split, port walls, screw seats, vent placement, airflow path, and serviceability are credible"
 kind = "subjective"
+
+[[rubric]]
+id = "assembly-semantics"
+description = "named assembly roles, insertion, access, clash, and airflow facts satisfy the public product check"
+kind = "lua"
+script = "../checks/assembly-v1.lua"
+expected = "../checks/pi4-enclosure-v1.json"

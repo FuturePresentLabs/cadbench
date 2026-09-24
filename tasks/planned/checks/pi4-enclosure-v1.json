@@ -1,0 +1,26 @@
+{
+  "schema": "cadbench.lua-check-input.v1",
+  "required_roles": [
+    "enclosure_base",
+    "removable_lid",
+    "protected_component"
+  ],
+  "predicates": [
+    {
+      "kind": "no_clash",
+      "roles": ["protected_component", "enclosure_base"]
+    },
+    {
+      "kind": "insertion_clear",
+      "roles": ["protected_component", "enclosure_base"]
+    },
+    {
+      "kind": "connectors_accessible",
+      "roles": ["protected_component", "enclosure_base"]
+    },
+    {
+      "kind": "passive_airflow_path",
+      "roles": ["enclosure_base", "removable_lid", "protected_component"]
+    }
+  ]
+}

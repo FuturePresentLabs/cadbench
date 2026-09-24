@@ -1,7 +1,7 @@
 # cadbench
 
 [![license](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](#license)
-[![tests](https://img.shields.io/badge/tests-22%20passing-brightgreen.svg)](#status)
+[![tests](https://img.shields.io/badge/tests-27%20passing-brightgreen.svg)](#status)
 [![evals](https://img.shields.io/badge/evals-28-orange.svg)](#tasks)
 [![status](https://img.shields.io/badge/status-runs%20end%20to%20end-success.svg)](#status)
 
@@ -167,6 +167,27 @@ criterion:
 - `conforms` — see the known gap above.
 - `subjective` — not automated; reported as needing a human rather than
   guessing, mirroring pcbbench's "vibe" criterion.
+- `lua` (`script`, `expected`) — a sandboxed product-specific composition of
+  Rust-owned predicates. Paths are relative to the task. The backend writes
+  `eval-facts.json` using schema `cadbench.eval-facts.v1`; checked-in expected
+  values use `cadbench.lua-check-input.v1`. Public checks never link or name a
+  backend-private implementation.
+
+Lua is intentionally not a geometry or standards engine. Its only host API is:
+
+- `check.require_role(role)` — exactly one part has the controlled semantic
+  role;
+- `check.require_predicate(kind, roles)` — Rust resolves each role to one
+  stable part ID and requires an exact predicate fact;
+- `check.require_expected_roles()` and
+  `check.require_expected_predicates()` — apply the checked-in JSON contract.
+
+Only the Lua table, string, and math libraries are loaded, execution is capped
+at 100,000 instructions, and the script has no filesystem, process, network,
+module-loading, raw-geometry, or generated-name access. Missing facts,
+ambiguous roles, dangling IDs, schema drift, and absent predicates fail
+loudly. See `tasks/planned/checks/assembly-v1.lua` and its adjacent JSON
+contracts for the first vertical slice.
 
 ## Family
 

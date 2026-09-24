@@ -70,7 +70,10 @@ pub enum Check {
     /// The STEP export carries true surfaces (not a faceted mesh), at least
     /// `min_cylinders` of them cylindrical. `derivation` says where the count
     /// comes from.
-    TrueSurfaces { min_cylinders: u32, derivation: String },
+    TrueSurfaces {
+        min_cylinders: u32,
+        derivation: String,
+    },
     /// The part can be cut as a through profile with a jet `kerf_mm` wide:
     /// exactly `pierces` pierces and a jet path `length_mm` long (within
     /// `tolerance_mm`), derived by hand in `derivation`.
@@ -88,6 +91,12 @@ pub enum Check {
     /// A through cut with a jet `kerf_mm` wide is refused, saying `contains`:
     /// [`Check::Refuses`] for the cut stage, which needs to know the kerf.
     CutRefused { kerf_mm: f64, contains: String },
+    /// A bounded Lua composition of Rust-owned assembly predicates.
+    ///
+    /// Both paths are relative to the task file. `expected` is public JSON
+    /// configuration; the script cannot open files or inspect backend-private
+    /// state. It can only invoke the host API documented in `lua_check`.
+    Lua { script: PathBuf, expected: PathBuf },
 }
 
 /// What a shape-driven task hands the backend besides its brief: a drawing of
@@ -137,6 +146,8 @@ pub enum LoadError {
     },
     #[error("{path}: input {svg} does not exist")]
     MissingInput { path: String, svg: String },
+    #[error("{path}: check file {check_file} does not exist")]
+    MissingCheckFile { path: String, check_file: String },
 }
 
 /// Loads a task file, resolving its input files against the file's own
@@ -172,6 +183,20 @@ pub fn load(path: &Path) -> Result<Task, LoadError> {
             unreachable!("a ShapeInput always serializes to a table");
         };
         task.input = Some(table);
+    }
+    let dir = path.parent().unwrap_or_else(|| Path::new("."));
+    for criterion in &mut task.rubric {
+        if let Check::Lua { script, expected } = &mut criterion.check {
+            for check_file in [script, expected] {
+                *check_file = dir.join(&*check_file);
+                if !check_file.is_file() {
+                    return Err(LoadError::MissingCheckFile {
+                        path: shown.clone(),
+                        check_file: check_file.display().to_string(),
+                    });
+                }
+            }
+        }
     }
     Ok(task)
 }
@@ -278,7 +303,8 @@ mod tests {
                     continue;
                 }
             };
-            let mut bad = |rule: &str, what: String| problems.push(format!("{name}: {rule} {what}"));
+            let mut bad =
+                |rule: &str, what: String| problems.push(format!("{name}: {rule} {what}"));
             let checks: Vec<&Check> = task.rubric.iter().map(|c| &c.check).collect();
             let refusal = refuses(&task.rubric);
             if task.input.is_some() {
@@ -300,7 +326,11 @@ mod tests {
                 match check {
                     // G3: every expected number says where it came from, and
                     // tolerances are tight enough to catch a wrong answer.
-                    Check::VolumeMm3 { expected, tolerance, derivation } => {
+                    Check::VolumeMm3 {
+                        expected,
+                        tolerance,
+                        derivation,
+                    } => {
                         if derivation.trim().is_empty() {
                             bad("G3", "volume_mm3 has no derivation".into());
                         }
@@ -309,14 +339,24 @@ mod tests {
                         }
                     }
                     Check::BoundsMm { tolerance, .. } if *tolerance > 0.05 => {
-                        bad("G3", format!("bounds tolerance {tolerance} mm is looser than 0.05"));
+                        bad(
+                            "G3",
+                            format!("bounds tolerance {tolerance} mm is looser than 0.05"),
+                        );
                     }
-                    Check::CutPlan { tolerance_mm, derivation, .. } => {
+                    Check::CutPlan {
+                        tolerance_mm,
+                        derivation,
+                        ..
+                    } => {
                         if derivation.trim().is_empty() {
                             bad("G3", "cut_plan has no derivation".into());
                         }
                         if *tolerance_mm > 0.05 {
-                            bad("G3", format!("cut tolerance {tolerance_mm} mm is looser than 0.05"));
+                            bad(
+                                "G3",
+                                format!("cut tolerance {tolerance_mm} mm is looser than 0.05"),
+                            );
                         }
                     }
                     Check::TrueSurfaces { derivation, .. } if derivation.trim().is_empty() => {
@@ -326,10 +366,14 @@ mod tests {
                     // machine key of the answer it is testing for.
                     Check::Decision { key, one_of } => {
                         if key.trim().is_empty() || one_of.is_empty() {
-                            bad("G4", "decision with an empty key or no accepted answers".into());
+                            bad(
+                                "G4",
+                                "decision with an empty key or no accepted answers".into(),
+                            );
                         }
                         for option in one_of {
-                            let machine = option.contains('_') || option.chars().any(|c| c.is_ascii_digit());
+                            let machine =
+                                option.contains('_') || option.chars().any(|c| c.is_ascii_digit());
                             if machine && brief.contains(&option.to_lowercase()) {
                                 bad("G4", format!("brief leaks the answer key {option:?}"));
                             }
@@ -341,7 +385,10 @@ mod tests {
             }
             // G5: at most one human-judged criterion, never the only one.
             if subjective > 1 || (subjective == 1 && checks.len() == 1) {
-                bad("G5", format!("{subjective} subjective criteria out of {}", checks.len()));
+                bad(
+                    "G5",
+                    format!("{subjective} subjective criteria out of {}", checks.len()),
+                );
             }
         }
         // G6: a family that can build things can also be asked for something
@@ -350,7 +397,11 @@ mod tests {
         for family in families_with_shapes.difference(&families_with_refusals) {
             problems.push(format!("family {family}: G6 has no refusal task"));
         }
-        assert!(problems.is_empty(), "authoring guideline violations:\n  {}", problems.join("\n  "));
+        assert!(
+            problems.is_empty(),
+            "authoring guideline violations:\n  {}",
+            problems.join("\n  ")
+        );
     }
 
     /// The original task's specific numbers stay pinned on their own: the

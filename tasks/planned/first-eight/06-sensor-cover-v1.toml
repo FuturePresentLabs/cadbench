@@ -46,3 +46,10 @@ derivation = "Four screw passages, each expected as two analytic half-cylinder f
 id = "review"
 description = "gasket continuity, cable serviceability, screw seats, and printable proportions are credible"
 kind = "subjective"
+
+[[rubric]]
+id = "assembly-semantics"
+description = "named assembly roles, insertion, clash, and seal facts satisfy the public product check"
+kind = "lua"
+script = "../checks/assembly-v1.lua"
+expected = "../checks/sensor-cover-v1.json"
