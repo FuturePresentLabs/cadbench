@@ -406,6 +406,8 @@ pub const CUT_REPORT_SCHEMA: &str = "transmog.cut.v2";
 pub const STAGE_BUILD: &str = "build-stream";
 /// Multi-body viewer stream emitted for assembly tasks.
 pub const STAGE_ASSEMBLY: &str = "assembly-stream";
+/// One numbered drawing sheet per named assembly body.
+pub const STAGE_DRAWING: &str = "assembly-drawing";
 /// Filename the design stage writes its `DesignDocument` RON to.
 pub const DESIGN_FILE: &str = "design.ron";
 /// Schema tag `transmog build-stream` writes into `status.json`.
@@ -608,6 +610,21 @@ impl Backend<Check> for TransmogBackend {
                     workdir.join("assembly").display().to_string(),
                     "--explode".to_owned(),
                     "8".to_owned(),
+                ],
+            )?);
+            stages.push(self.stage(
+                STAGE_DRAWING,
+                &[
+                    "assembly-drawing".to_owned(),
+                    design_path.display().to_string(),
+                    "--context".to_owned(),
+                    workdir.join("recipe-context.json").display().to_string(),
+                    "--out".to_owned(),
+                    workdir.join("drawings").display().to_string(),
+                    "--views".to_owned(),
+                    "front,top,right,iso".to_owned(),
+                    "--sheet".to_owned(),
+                    "a3".to_owned(),
                 ],
             )?);
         }
@@ -881,7 +898,7 @@ mod tests {
                 .iter()
                 .map(|stage| stage.name.as_str())
                 .collect::<Vec<_>>(),
-            [STAGE_RECIPE, STAGE_BUILD, STAGE_ASSEMBLY]
+            [STAGE_RECIPE, STAGE_BUILD, STAGE_ASSEMBLY, STAGE_DRAWING]
         );
         let recipe = &outcome.stages[0].command;
         for expected in [
@@ -896,6 +913,15 @@ mod tests {
         }
         assert!(!recipe.contains("--board "), "board must come from the brief");
         assert!(!recipe.contains("--material "), "material must come from the brief");
+        let drawing = &outcome.stages[3].command;
+        for expected in [
+            "assembly-drawing",
+            "recipe-context.json",
+            "drawings",
+            "front,top,right,iso",
+        ] {
+            assert!(drawing.contains(expected), "missing {expected}: {drawing}");
+        }
         let _ = std::fs::remove_dir_all(&dir);
     }
 
